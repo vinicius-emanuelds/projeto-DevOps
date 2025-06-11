@@ -43,7 +43,7 @@ pipeline {
 
     post {
         success {
-            chucknorris()
+            chuckNorris()
         }
         failure {
             echo 'Build falhou. Mas Chuck Norris nunca falha.'
