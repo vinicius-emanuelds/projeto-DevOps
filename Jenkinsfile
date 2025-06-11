@@ -40,4 +40,13 @@ pipeline {
             }
         }
     }
+
+    post {
+        success {
+            chucknorris()
+        }
+        failure {
+            echo 'Build falhou. Mas Chuck Norris nunca falha.'
+        }
+    }
 }
