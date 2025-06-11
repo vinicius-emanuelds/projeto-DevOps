@@ -1,0 +1,4 @@
+.git
+venv
+./_pycache_
+.pyc
