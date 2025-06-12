@@ -411,3 +411,79 @@ Integrar o **Trivy** à pipeline Jenkins para escanear automaticamente as imagen
 ---
 
 Se quiser, posso gerar essa seção já formatada para o `README.md` também. Deseja isso?
+
+Ótimo. Aqui está a documentação da **Fase Extra: Webhook com GitHub e Ngrok**, no padrão das fases anteriores:
+
+---
+
+## 🔁 Fase Extra: Integração com Webhook GitHub + Ngrok
+
+### Objetivo
+
+Automatizar a execução da pipeline Jenkins sempre que houver um push no repositório GitHub, mesmo com o Jenkins sendo executado localmente.
+
+---
+
+### 🧰 Pré-Requisitos
+
+* Jenkins rodando localmente (porta `8081`)
+* Conta no [Ngrok](https://ngrok.com/)
+* Repositório GitHub já configurado com o Jenkinsfile
+
+---
+
+### ⚙️ Etapas da Configuração
+
+#### 1. Instalar e autenticar o Ngrok (Windows)
+
+```bash
+winget install Ngrok.Ngrok
+ngrok config add-authtoken <SEU_TOKEN_NGROK>
+```
+
+#### 2. Expor Jenkins via Ngrok
+
+```bash
+ngrok http 8081
+```
+
+> Guarde o endereço gerado, ex: `https://8cd4-2804-xyz.ngrok.io`
+
+---
+
+#### 3. Configurar Webhook no GitHub
+
+* Acesse seu repositório → ⚙️ Settings → Webhooks → **Add webhook**
+* **Payload URL:**
+  `https://<NGROK_URL>/github-webhook/`
+  Exemplo: `https://8cd4-2804-xyz.ngrok.io/github-webhook/`
+* **Content type:** `application/json`
+* **Secret:** (deixe vazio ou use um token simples)
+* **Just the push event** (marcado)
+* Clique em **Add webhook**
+
+---
+
+#### 4. Configurar o Job no Jenkins
+
+* Em **Pipeline → Configure**
+* Vá até **Build Triggers**
+
+  * Marque: `GitHub hook trigger for GITScm polling`
+
+---
+
+### 📦 Entregável
+
+* Push no GitHub aciona automaticamente o Jenkins, que realiza build, push da imagem e deploy no Kubernetes.
+
+---
+
+> 💡 **Decisão técnica**
+>
+> A exposição do Jenkins foi feita via **Ngrok**, evitando configurações complexas de rede ou servidores externos. Essa abordagem é suficiente para ambientes locais e testes de integração contínua.
+
+---
+
+Pronto para o próximo desafio extra?
+
