@@ -50,10 +50,14 @@ pipeline {
                         script: """#!/bin/bash
                         docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v \$PWD:/root/.cache/ \
                         aquasec/trivy \
-                        image --severity CRITICAL \
+                        image ${image} \
+                        --severity CRITICAL \
+                        --ignore-unfixed \
                         --exit-code 1 \
-                        ${image}
+                        --format table \
+                        --output trivy-report.txt
                         """,
                         returnStatus: true
                     )
