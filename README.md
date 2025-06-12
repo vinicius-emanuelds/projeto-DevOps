@@ -695,3 +695,4 @@ stage('Análise com SonarQube') {
 ---
 
 Se quiser, posso gerar esse conteúdo direto em um arquivo `README.md` formatado para o seu repositório. Deseja isso agora?
+...
