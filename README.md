@@ -486,4 +486,212 @@ ngrok http 8081
 ---
 
 Pronto para o próximo desafio extra?
+Aqui está a documentação da **Fase Extra: Webhook GitHub → Jenkins com Ngrok e alternativa via Smee.io**:
 
+---
+
+## 📦 Fase Extra: Webhook GitHub → Jenkins
+
+### 🎯 Objetivo
+
+Permitir que **um push no GitHub** dispare **automaticamente uma pipeline Jenkins** hospedada localmente.
+
+---
+
+## 🔧 Opção 1: Ngrok (Tunelamento de Porta)
+
+### ✅ Pré-requisitos
+
+* Jenkins rodando localmente (ex: `http://localhost:8081`)
+* Conta no [Ngrok](https://ngrok.com/)
+* Autenticação configurada com:
+
+  ```bash
+  ngrok config add-authtoken SEU_TOKEN
+  ```
+
+### ▶️ Passos
+
+1. **Iniciar o túnel:**
+
+   ```bash
+   ngrok http 8081
+   ```
+
+   Isso vai gerar uma URL pública como:
+
+   ```
+   https://a1b2c3d4.ngrok.io
+   ```
+
+2. **Configurar webhook no GitHub:**
+
+   * Vá até o repositório
+   * Acesse: `Settings` > `Webhooks` > `Add webhook`
+   * **Payload URL**: `https://a1b2c3d4.ngrok.io/github-webhook/`
+   * **Content type**: `application/json`
+   * **Events**: `Just the push event`
+
+3. **Configurar Jenkins:**
+
+   * No job da pipeline, vá em: `Configurar` > `Build Triggers`
+   * Marque: ✅ “GitHub hook trigger for GITScm polling”
+
+4. **Importante:**
+
+   * Toda vez que reiniciar o túnel com Ngrok, a URL **mudará** (no plano gratuito), quebrando o webhook até ser atualizado no GitHub.
+
+---
+
+## 🪄 Opção 2: Smee.io (Recomendado para testes locais)
+
+### ✅ Vantagens
+
+* Recomendado pela **GitHub**
+* Não precisa abrir porta nem expor Jenkins
+* Funciona mesmo com IP dinâmico
+* Ótimo para dev local
+
+### ▶️ Passos
+
+1. **Criar canal no Smee.io:**
+
+   * Acesse: [https://smee.io](https://smee.io)
+   * Clique em "Start a new channel"
+   * Exemplo de URL gerada:
+
+     ```
+     https://smee.io/abc123def456
+     ```
+
+2. **Criar webhook no GitHub:**
+
+   * Payload URL: `https://smee.io/abc123def456`
+   * Content type: `application/json`
+   * Events: `Just the push event`
+
+3. **Rodar o relay localmente:**
+
+   ```bash
+   npx smee -u https://smee.io/abc123def456 -t http://localhost:8081/github-webhook/
+   ```
+
+4. **Configurar Jenkins:**
+
+   * Vá em: `Configurar job` > `Build Triggers`
+   * Marque: ✅ “GitHub hook trigger for GITScm polling”
+
+---
+
+## 💡 Considerações
+
+> *“Ngrok é mais robusto e pronto para produção, mas com URLs voláteis no plano gratuito. Smee.io é mais prático para testes e desenvolvimento local, sem precisar expor portas da máquina.”*
+
+---
+
+Se quiser, posso gerar um bloco `README.md` com esse conteúdo formatado para seu repositório. Deseja isso?
+
+Perfeito. Aqui está a documentação completa da **Fase Extra: Integração com SonarQube** para o seu projeto DevOps:
+
+---
+
+## 📦 Fase Extra: Integração com SonarQube (SAST)
+
+### 🎯 Objetivo
+
+Realizar análise **estática de código (SAST)** utilizando o **SonarQube** em ambiente local via Docker, integrando com o Jenkins Pipeline e bloqueando builds em caso de falhas.
+
+---
+
+## ⚙️ Configuração do Ambiente
+
+### ✅ Requisitos
+
+* Jenkins e SonarQube rodando no **mesmo host** (WSL ou Windows).
+* Docker instalado com suporte a containers.
+* Jenkins configurado com `sonar-scanner` disponível no agente.
+* Token de autenticação do SonarQube criado previamente.
+
+---
+
+## ▶️ Passos para Instalação
+
+### 1. **Rodar SonarQube via Docker**
+
+```bash
+docker run -d --name sonarqube \
+  -p 9000:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  sonarqube:lts
+```
+
+> Acesse em: `http://localhost:9000/`
+> Login padrão: `admin` / `admin` (mude na primeira vez)
+
+---
+
+### 2. **Criar Token de Autenticação**
+
+* Acesse o SonarQube
+* Vá em: `My Account` → `Security`
+* Crie um **token novo**
+* Guarde o token para uso no Jenkins
+
+---
+
+### 3. **Configurar Jenkins**
+
+* Vá em: `Gerenciar Jenkins` → `Configurar o Sistema`
+
+* Seção **SonarQube Servers**:
+
+  * Nome: `sonar-local`
+  * URL: `http://localhost:9000`
+  * Autenticação: **via token** (adicione em "Credenciais")
+
+* Vá em: `Global Tool Configuration`
+
+  * Configure o `SonarScanner` com nome: `sonar-scanner`
+
+---
+
+## 🛠️ Jenkinsfile (Stage de Análise)
+
+```groovy
+stage('Análise com SonarQube') {
+    tools {
+        sonarScanner 'sonar-scanner'
+    }
+    steps {
+        withSonarQubeEnv('sonar-local') {
+            sh '''
+            sonar-scanner \
+              -Dsonar.projectKey=projeto-devops \
+              -Dsonar.sources=. \
+              -Dsonar.python.version=3.9 \
+              -Dsonar.token=$SONAR_TOKEN
+            '''
+        }
+    }
+}
+```
+
+> Adicione o token em `Credenciais Jenkins` e referencie com `withCredentials` ou variável de ambiente.
+
+---
+
+### ⚠️ Problemas Resolvidos
+
+* ❌ **host.docker.internal** não é reconhecido no WSL → foi substituído por `localhost`
+* ❌ Erro `AccessDeniedException` em arquivos grandes → ignorar diretórios como `trivy/db/` com `.sonarcloud.properties` ou `sonar.exclusions`
+* ❌ Falta do `sonar-scanner` → instalado manualmente no agente Jenkins
+
+---
+
+### 💬 Nota Técnica
+
+> “Para evitar falhas por arquivos grandes ou pastas não relevantes (como cache do Trivy), recomenda-se excluir essas pastas via `sonar.exclusions` no comando ou no painel do projeto.”
+
+---
+
+Se quiser, posso gerar esse conteúdo direto em um arquivo `README.md` formatado para o seu repositório. Deseja isso agora?
