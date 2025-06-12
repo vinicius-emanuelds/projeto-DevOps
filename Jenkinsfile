@@ -71,6 +71,21 @@ pipeline {
             }
         }
 
+        stage('Análise com SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar-local') {
+                    sh """
+                    sonar-scanner \
+                    -Dsonar.projectKey=projeto-devops \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.python.version=3.9 \
+                    -Dsonar.token=${env.SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+
         stage('Notificar no Discord') {
             steps {
                 script {
@@ -87,22 +102,7 @@ pipeline {
                     """
                 }
             }
-        }  
-
-        stage('Análise com SonarQube') {
-            steps {
-                withSonarQubeEnv('sonar-local') {
-                    sh """
-                    sonar-scanner \
-                    -Dsonar.projectKey=projeto-devops \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://host.docker.internal:9000 \
-                    -Dsonar.python.version=3.9 \
-                    -Dsonar.token=${env.SONAR_TOKEN}
-                    """
-                }
-            }
-        } 
+        }
     }
 
     post {
