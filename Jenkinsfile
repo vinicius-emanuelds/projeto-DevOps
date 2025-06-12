@@ -76,11 +76,12 @@ pipeline {
                 withSonarQubeEnv('sonar-local') {
                     sh """
                     sonar-scanner \
-                    -Dsonar.projectKey=projeto-devops \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.python.version=3.9 \
-                    -Dsonar.token=${env.SONAR_TOKEN}
+                        -Dsonar.projectKey=projeto-devops \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.token=${env.SONAR_TOKEN} \
+                        -Dsonar.python.version=3.9 \
+                        -Dsonar.exclusions=trivy/**
                     """
                 }
             }
