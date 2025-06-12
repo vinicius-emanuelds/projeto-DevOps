@@ -335,27 +335,79 @@ Após cada `git push` ou build manual:
 
 ---
 
-## 📸 Prints recomendados
+## 🔐 Desafio Extra: Scan de Vulnerabilidades com Trivy
 
-* Console do Jenkins com stages finalizados
-* Docker Hub com a imagem publicada
-* Kubernetes com pods `Running`
-* Swagger da API acessível via `projeto.localhost`
+### 🎯 Objetivo
 
----
-
-## 🎯 Próximo passo
-
-Fase 5 — Integrações adicionais:
-
-* Scanner de vulnerabilidades com Trivy
-* Notificação via Slack/Discord
-* Validação pós-deploy (`rollout status`)
-* Chuck Norris pós-build (extra)
-
-```
+Integrar o **Trivy** à pipeline Jenkins para escanear automaticamente as imagens Docker geradas e **bloquear o deploy caso existam vulnerabilidades CRÍTICAS corrigíveis**.
 
 ---
 
-Se quiser, posso gerar esse markdown como arquivo `README_FASE4.md`. Deseja isso? Ou quer partir direto pra Fase 5?
-```
+### ⚙️ Etapas da Implementação
+
+1. **Instalação do Trivy**
+   O Trivy foi utilizado via container, sem instalação local, usando o seguinte comando base:
+
+   ```bash
+   docker run --rm \
+     -v /var/run/docker.sock:/var/run/docker.sock \
+     aquasec/trivy image nome-da-imagem
+   ```
+
+2. **Inclusão na pipeline Jenkins**
+   Um novo `stage` foi adicionado no `Jenkinsfile`, antes do deploy, contendo:
+
+   ```groovy
+   stage('Scan de Vulnerabilidades com Trivy') {
+       steps {
+           script {
+               def image = "viniciusemanuelds/projeto-devops:${env.BUILD_ID}"
+               echo "🔍 Escaneando a imagem ${image} com Trivy..."
+
+               def exitCode = sh(
+                   script: """#!/bin/bash
+                   docker run --rm \
+                   -v /var/run/docker.sock:/var/run/docker.sock \
+                   -v \$PWD:/root/.cache/ \
+                   aquasec/trivy \
+                   image ${image} \
+                   --severity CRITICAL \
+                   --ignore-unfixed \
+                   --exit-code 1 \
+                   --format table \
+                   --output trivy-report.txt
+                   """,
+                   returnStatus: true
+               )
+
+               if (exitCode != 0) {
+                   error "❌ Vulnerabilidades CRÍTICAS (com correção) encontradas na imagem Docker! Build bloqueado. Veja trivy-report.txt."
+               } else {
+                   echo "✅ Nenhuma vulnerabilidade crítica (corrigível) encontrada na imagem."
+               }
+           }
+       }
+   }
+   ```
+
+3. **Política de Segurança adotada**
+
+   * **Gravidade avaliada:** Apenas CVEs com severidade `CRITICAL`;
+   * **Critério de bloqueio:** Apenas se houver **patch disponível**;
+   * **Relatório gerado:** `trivy-report.txt`.
+
+---
+
+### 🧠 Decisão Arquitetural
+
+> **Optamos por manter a imagem base `python:3.9-slim`, mesmo apresentando uma vulnerabilidade crítica (`CVE-2023-45853`) no pacote `zlib1g`.**
+> Esta decisão foi baseada em dois fatores:
+>
+> 1. A vulnerabilidade está marcada como `will_not_fix` pela equipe mantenedora do pacote no Debian.
+> 2. O impacto no contexto do projeto é mínimo e sem exposição direta — portanto, aceitamos o risco controlado.
+>
+> A opção `--ignore-unfixed` do Trivy garante que apenas vulnerabilidades com correção disponível interrompam o pipeline.
+
+---
+
+Se quiser, posso gerar essa seção já formatada para o `README.md` também. Deseja isso?

@@ -71,6 +71,23 @@ pipeline {
             }
         }
 
+        stage('Notificar no Discord') {
+            steps {
+                script {
+                    def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                    def mensagem = """{
+                    "content": "🚀 A pipeline concluiu o deploy da aplicação no Kubernetes!"
+                    }"""
+
+                    sh """
+                    curl -H "Content-Type: application/json" \
+                        -X POST \
+                        -d '${mensagem}' \
+                        ${discordWebhook}
+                    """
+                }
+            }
+        }   
     }
 
     post {
