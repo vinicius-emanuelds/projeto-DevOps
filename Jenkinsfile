@@ -39,6 +39,34 @@ pipeline {
                 }
             }
         }
+
+        stage('Scan de Vulnerabilidades com Trivy') {
+            steps {
+                script {
+                    def image = "viniciusemanuelds/projeto-devops:${env.BUILD_ID}"
+                    echo "Escaneando a imagem ${image}..."
+
+                    def exitCode = sh(
+                        script: """#!/bin/bash
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy \
+                        image --severity CRITICAL \
+                        --exit-code 1 \
+                        ${image}
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (exitCode != 0) {
+                        error "❌ Vulnerabilidades CRÍTICAS encontradas na imagem Docker! Build bloqueado."
+                    } else {
+                        echo "✅ Nenhuma vulnerabilidade crítica encontrada."
+                    }
+                }
+            }
+        }
+
     }
 
     post {
