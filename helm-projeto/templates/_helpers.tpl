@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "heml-projeto.fullname" -}}
+{{- define "projeto-devops.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "heml-projeto.chart" -}}
+{{- define "projeto-devops.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "heml-projeto.labels" -}}
-helm.sh/chart: {{ include "heml-projeto.chart" . }}
-{{ include "heml-projeto.selectorLabels" . }}
+{{- define "projeto-devops.labels" -}}
+helm.sh/chart: {{ include "projeto-devops.chart" . }}
+{{ include "projeto-devops.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "heml-projeto.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "heml-projeto.name" . }}
+{{- define "projeto-devops.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "projeto-devops.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "heml-projeto.serviceAccountName" -}}
+{{- define "projeto-devops.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "heml-projeto.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "projeto-devops.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
