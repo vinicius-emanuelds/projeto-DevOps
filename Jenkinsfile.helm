@@ -35,7 +35,7 @@ pipeline {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh """
-                    helm upgrade --install projeto-devops ./helm-projeto \
+                    helm upgrade --install devops-helm ./helm-projeto \
                     --namespace devops \
                     --set image.repository=${IMAGE_NAME} \
                     --set image.tag=${env.BUILD_ID}
@@ -83,7 +83,7 @@ pipeline {
                 withSonarQubeEnv('sonar-local') {
                     sh """
                     sonar-scanner \
-                    -Dsonar.projectKey=projeto-devops \
+                    -Dsonar.projectKey=devops-helm \
                     -Dsonar.sources=. \
                     -Dsonar.host.url=http://localhost:9000 \
                     -Dsonar.python.version=3.9
