@@ -92,7 +92,7 @@ pipeline {
                     sh """
                         curl -H "Content-Type: application/json" \
                             -X POST \
-                            -d '{"content": "🚀 Deploy realizado com sucesso!"}' \
+                            -d '{"content": "🚀 Deploy com Helm realizado com sucesso!"}' \
                             ${DISCORD_WEBHOOK}
                     """
                 }

@@ -121,33 +121,17 @@ O `Dockerfile` é um script que contém as instruções para montar a imagem da 
 ```dockerfile
 # /backend/Dockerfile
 
-# Etapa 1: Imagem Base
-# Utilizei a imagem 'python:3.9-slim' por ser uma versão enxuta,
-# o que diminui a superfície de ataque e o tamanho final da imagem.
 FROM python:3.9-slim
 
-# Etapa 2: Diretório de Trabalho
-# Define o diretório de trabalho padrão. Isso é uma boa prática para
-# não poluir o diretório raiz do container.
 WORKDIR /app
 
-# Etapa 3: Instalação de Dependências com otimização de cache
-# Copio inicialmente apenas o requirements.txt para aproveitar o cache do Docker.
-# Alterações no código-fonte não afetam esta camada, otimizando futuros builds.
 COPY requirements.txt .
 
-# Atualizo o sistema e instalo as dependências Python.
 RUN apt-get update && apt-get upgrade -y && apt-get clean && \
     pip install --no-cache-dir -r requirements.txt
 
-# Etapa 4: Cópia do Código
-# Agora copio o resto do código. Qualquer alteração aqui invalidará
-# apenas o cache desta camada e das subsequentes.
 COPY . .
 
-# Etapa 5: Comando de Execução
-# Expõe a aplicação na porta 8000 e no host 0.0.0.0,
-# que é essencial para que a aplicação seja acessível de fora do container.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
@@ -207,8 +191,13 @@ kubectl create namespace devops
 kubectl apply -f ./k8s/projeto-devops.yaml -n devops
 ```
 
-O resultado foi a aplicação rodando e acessível externamente, servida pelo Kubernetes.
+O resultado foi a aplicação rodando e acessível externamente, servida pelo Kubernetes, Com a API rodando e acessível em `http://projeto.localhost` e `http://projeto.localhost/docs`
 
+![alt text](src/public/images/PROJETO_DEVOPS_CHUCK.png)
+
+![alt text](src/public/images/TESTE.png)
+
+![alt text](src/public/images/TESTE_DOCS.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -221,7 +210,7 @@ O resultado foi a aplicação rodando e acessível externamente, servida pelo Ku
 
 Esta é a fase central do projeto: unir tudo em uma pipeline automatizada.
 
-### O Jenkinsfile: O Coração da Automação
+### O Jenkinsfile
 
 O `Jenkinsfile` é um arquivo de texto que define a pipeline usando uma sintaxe Groovy. Ele vive junto com o código-fonte, tratando a pipeline como código (*Pipeline as Code*).
 
@@ -284,6 +273,7 @@ pipeline {
 
 * **Referência em Vídeo:** Para a construção e deploy dessa pipeline, esse vídeo foi indispensável para clarear o passo a passo: [O que é Jenkins | Guia prático para começar com Jenkins](https://www.youtube.com/watch?v=mvtVL5eivzo&t).
 
+![alt text](src/public/images/PROJETO_DEVOPS_JKS.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -309,7 +299,6 @@ Integrei o SonarQube adicionando um estágio que executa o `sonar-scanner`. A ca
 2. **Configuração no Jenkins**: Configurei a URL do servidor e o token de autenticação no Jenkins.
 3. **Estágio na Pipeline**: Adicionei um estágio para executar a análise antes de construir a imagem.
 
-<!-- end list -->
 
 ```groovy
 stage('Análise com SonarQube') {
@@ -330,6 +319,8 @@ stage('Análise com SonarQube') {
 ```
 
 **Problemas Resolvidos:** A integração teve seus desafios, como erros de conexão (`host.docker.internal` não funciona bem no WSL2, usei `localhost`) e a necessidade de configurar o `sonar-scanner` manualmente no agente Jenkins.
+
+![alt text](src/public/images/SONAR.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -383,7 +374,10 @@ Esta automação garante que apenas imagens consideradas seguras cheguem ao noss
 
 > **Decisão Arquitetural Importante:** Ao escanear, o Trivy encontrou uma vulnerabilidade crítica (`CVE-2023-45853`) no pacote `zlib1g` da imagem base. No entanto, a equipe do Debian marcou-a como `will_not_fix` (não será corrigida). Em um cenário real, isso exigiria uma análise de risco. Para este projeto, decidi aceitar o risco, pois o impacto era mínimo, e usei a flag `--ignore-unfixed` para que o Trivy só bloqueasse a pipeline por falhas que tivessem uma correção disponível.
 
+![alt text](src/public/images/TRIVY.png)
+
 [⬆️ Voltar ao menu](#navegação)
+
 
 <br>
 
@@ -417,43 +411,45 @@ Para enviar notificações ao Discord diretamente do Jenkins, utilizei um webhoo
    * Configurei a pipeline para enviar notificações POST para o webhook do Discord sempre que o pipeline finaliza com sucesso ou falha, utilizando a URL pública do Ngrok.
 
 ```groovy
-    post {
-        success {
-            script {
-                def chuck = chuckNorris()
-                def discordWebhook = 'SUA_URL_DISCORD'
-                def mensagem = """{
-                    "content": "🚀 Deploy realizado com sucesso!"
-                }"""
+post {
+    success {
+        script {
+            def chuck = chuckNorris()
+            def discordWebhook = 'SUA_URL_DISCORD'
+            def mensagem = """{
+                "content": "🚀 Deploy realizado com sucesso!"
+            }"""
 
-                sh """
-                curl -H "Content-Type: application/json" \
-                    -X POST \
-                    -d '${mensagem}' \
-                    ${discordWebhook}
-                """
-            }
+            sh """
+            curl -H "Content-Type: application/json" \
+                -X POST \
+                -d '${mensagem}' \
+                ${discordWebhook}
+            """
         }
+    }
 
-        failure {
-            script {
-                def chuck = chuckNorris()
-                def discordWebhook = 'SUA_URL_DISCORD'
-                def mensagem = """{
-                    "content": "⚠️ A pipeline falhou!"
-                }"""
+    failure {
+        script {
+            def chuck = chuckNorris()
+            def discordWebhook = 'SUA_URL_DISCORD'
+            def mensagem = """{
+                "content": "⚠️ A pipeline falhou!"
+            }"""
 
-                sh """
-                curl -H "Content-Type: application/json" \
-                    -X POST \
-                    -d '${mensagem}' \
-                    ${discordWebhook}
-                """
-            }
+            sh """
+            curl -H "Content-Type: application/json" \
+                -X POST \
+                -d '${mensagem}' \
+                ${discordWebhook}
+            """
         }
     }
 }
 ```
+
+![alt text](src/public/images/DISCORD.png)
+
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -469,8 +465,6 @@ Para enviar notificações ao Discord diretamente do Jenkins, utilizei um webhoo
 
 1. **Criei um Helm Chart**: Estruturei meus manifestos em um diretório `helm-projeto/`, usando variáveis de template (ex: `{{ .Values.image.tag }}`) em vez de valores fixos.
 2. **Ajustei a Pipeline**: Criei um novo estágio que usa o comando `helm` em vez de `kubectl`.
-
-<!-- end list -->
 
 ```groovy
 stage('Deploy com Helm') {
@@ -490,6 +484,10 @@ stage('Deploy com Helm') {
 **Aprendizados com Helm**: O diagnóstico de templates com `helm template --debug` foi essencial. Enfrentei e resolvi erros comuns, como a imutabilidade do `selector` em um Deployment e a necessidade de gerenciar os releases do Helm de forma separada dos deploys manuais com `kubectl`.
 
 * **Referência em Vídeo:** Para entender a estrutura de um Chart e os comandos do Helm, este vídeo foi um ótimo ponto de partida: [Guia Helm: Como simplificar o deploy no Kubernetes](https://www.youtube.com/watch?v=VTQpe-ZRgsk&t).
+
+![alt text](src/public/images/DEVOPS_HELM_JKS.png)
+
+![alt text](src/public/images/SONAR_DEVOPS_HELM.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
