@@ -1,0 +1,21 @@
+replicaCount: 2
+
+image:
+  repository: viniciusemanuelds/projeto-devops
+  tag: latest
+  containerPort: 8000
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+  nodePort: 30000
+
+ingress:
+  enabled: true
+  host: projeto.localhost
+  path: /
+
+metadata:
+  createdBy: viniciusemanuelds
+  repository: "https://github.com/vinicius-emanuelds/projeto-DevOps.git"

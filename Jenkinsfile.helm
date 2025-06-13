@@ -1,0 +1,105 @@
+pipeline {
+    agent { label 'WSL_Ubuntu' }
+
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub')
+        SONARQUBE = 'sonar-local'
+        IMAGE_NAME = "viniciusemanuelds/projeto-devops"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build da imagem Docker') {
+            steps {
+                script {
+                    docker.build("${IMAGE_NAME}:${env.BUILD_ID}", "./src/backend")
+                }
+            }
+        }
+
+        stage('Push da imagem Docker') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', DOCKERHUB_CREDENTIALS) {
+                        sh "docker push ${IMAGE_NAME}:${env.BUILD_ID}"
+                        sh "docker tag ${IMAGE_NAME}:${env.BUILD_ID} ${IMAGE_NAME}:latest"
+                        sh "docker push ${IMAGE_NAME}:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy com Helm') {
+            steps {
+                script {
+                    sh """
+                    helm upgrade --install projeto-devops ./helm-projeto \
+                    --namespace devops \
+                    --set image.repository=${IMAGE_NAME} \
+                    --set image.tag=${env.BUILD_ID}
+                    """
+                }
+            }
+        }
+
+        stage('Scan de Vulnerabilidades com Trivy') {
+            steps {
+                script {
+                    def exitCode = sh(
+                        script: """
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy image \
+                        --severity CRITICAL \
+                        --exit-code 1 \
+                        --ignore-unfixed \
+                        ${IMAGE_NAME}:${env.BUILD_ID}
+                        """,
+                        returnStatus: true
+                    )
+                    if (exitCode != 0) {
+                        error "❌ Vulnerabilidades CRÍTICAS encontradas na imagem Docker! Build bloqueado."
+                    } else {
+                        echo "✅ Nenhuma vulnerabilidade crítica encontrada."
+                    }
+                }
+            }
+        }
+
+        stage('Notificar no Discord') {
+            steps {
+                sh """
+                curl -H 'Content-Type: application/json' -X POST -d '{
+                  "content": "🚀 Deploy realizado com Helm no ambiente Kubernetes (versão ${env.BUILD_ID})"
+                }' https://discord.com/api/webhooks/SEU_WEBHOOK_AQUI
+                """
+            }
+        }
+
+        stage('Análise com SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar-local') {
+                    sh """
+                    sonar-scanner \
+                      -Dsonar.projectKey=projeto-devops \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=http://localhost:9000 \
+                      -Dsonar.python.version=3.9 \
+                      -Dsonar.token=${env.SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "Build falhou. Mas Chuck Norris nunca falha."
+        }
+    }
+}
