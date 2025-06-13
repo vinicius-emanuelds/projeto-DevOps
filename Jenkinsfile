@@ -7,35 +7,36 @@ pipeline {
         git 'linux-git'
     }
 
-
     stages {
+
+        stage('Análise com SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar-local') {
+                    sh """
+                    sonar-scanner \
+                        -Dsonar.projectKey=projeto-devops \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.token=${env.SONAR_TOKEN} \
+                        -Dsonar.python.version=3.9 \
+                        -Dsonar.exclusions=trivy/**
+                    """
+                }
+            }
+        }
+
+        stage('Resultado do SonarQube') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Build do Backend') {
             steps {
                 script {
                     dockerapp = docker.build("viniciusemanuelds/projeto-devops:${env.BUILD_ID}",'-f ./src/backend/Dockerfile ./src/backend')
-                }
-            }
-        }
-
-        stage('Push da imagem') {
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
-                        dockerapp.push('latest')
-                        dockerapp.push("${env.BUILD_ID}")
-                    }
-                }
-            }
-        }
-
-        stage('Deploy no Kubernetes') {
-            environment {
-                tag_version = "${env.BUILD_ID}"
-            }
-            steps {
-                withKubeConfig([credentialsId: 'kubeconfig']) {
-                    sh 'sed -i "s/{{tag}}/$tag_version/g" ./k8s/projeto-devops.yaml'
-                    sh 'kubectl apply -f ./k8s/projeto-devops.yaml -n devops'
                 }
             }
         }
@@ -71,47 +72,63 @@ pipeline {
             }
         }
 
-        stage('Análise com SonarQube') {
+        stage('Push da imagem') {
             steps {
-                withSonarQubeEnv('sonar-local') {
-                    sh """
-                    sonar-scanner \
-                        -Dsonar.projectKey=projeto-devops \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.token=${env.SONAR_TOKEN} \
-                        -Dsonar.python.version=3.9 \
-                        -Dsonar.exclusions=trivy/**
-                    """
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
+                        dockerapp.push('latest')
+                        dockerapp.push("${env.BUILD_ID}")
+                    }
                 }
             }
         }
 
-        stage('Notificar no Discord') {
+        stage('Deploy no Kubernetes') {
+            environment {
+                tag_version = "${env.BUILD_ID}"
+            }
             steps {
-                script {
-                    def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
-                    def mensagem = """{
-                    "content": "🚀 A pipeline concluiu o deploy da aplicação no Kubernetes!"
-                    }"""
-
-                    sh """
-                    curl -H "Content-Type: application/json" \
-                        -X POST \
-                        -d '${mensagem}' \
-                        ${discordWebhook}
-                    """
+                withKubeConfig([credentialsId: 'kubeconfig']) {
+                    sh 'sed -i "s/{{tag}}/$tag_version/g" ./k8s/projeto-devops.yaml'
+                    sh 'kubectl apply -f ./k8s/projeto-devops.yaml -n devops'
                 }
             }
         }
     }
 
-    post {
+    ost {
         success {
-            chuckNorris()
+            script {
+                def chuck = chuckNorris()
+                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                def mensagem = """{
+                    "content": "🚀 Deploy realizado com sucesso! Chuck diz: ${chuck}"
+                }"""
+
+                sh """
+                curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d '${mensagem}' \
+                    ${discordWebhook}
+                """
+            }
         }
+
         failure {
-            echo 'Build falhou. Mas Chuck Norris nunca falha.'
+            script {
+                def chuck = chuckNorris()
+                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                def mensagem = """{
+                    "content": "⚠️ A pipeline falhou! Chuck diz: ${chuck}"
+                }"""
+
+                sh """
+                curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d '${mensagem}' \
+                    ${discordWebhook}
+                """
+            }
         }
     }
 }
