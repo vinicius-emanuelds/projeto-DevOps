@@ -33,7 +33,7 @@ pipeline {
 
         stage('Deploy com Helm') {
             steps {
-                script {
+                withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh """
                     helm upgrade --install projeto-devops ./helm-projeto \
                     --namespace devops \
