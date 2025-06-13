@@ -2,8 +2,6 @@ pipeline {
     agent { label 'WSL_Ubuntu' }
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub')
-        SONARQUBE = 'sonar-local'
         IMAGE_NAME = "viniciusemanuelds/projeto-devops"
     }
 
@@ -14,21 +12,20 @@ pipeline {
             }
         }
 
-        stage('Build da imagem Docker') {
+        stage('Build Backend') {
             steps {
                 script {
-                    docker.build("${IMAGE_NAME}:${env.BUILD_ID}", "./src/backend")
+                    dockerapp = docker.build("${IMAGE_NAME}:${env.BUILD_ID}", "./src/backend")
                 }
             }
         }
 
-        stage('Push da imagem Docker') {
+        stage('Push da imagem') {
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
-                        sh "docker push ${IMAGE_NAME}:${env.BUILD_ID}"
-                        sh "docker tag ${IMAGE_NAME}:${env.BUILD_ID} ${IMAGE_NAME}:latest"
-                        sh "docker push ${IMAGE_NAME}:latest"
+                        dockerapp.push("${env.BUILD_ID}")
+                        dockerapp.push("latest")
                     }
                 }
             }
@@ -86,11 +83,10 @@ pipeline {
                 withSonarQubeEnv('sonar-local') {
                     sh """
                     sonar-scanner \
-                      -Dsonar.projectKey=projeto-devops \
-                      -Dsonar.sources=. \
-                      -Dsonar.host.url=http://localhost:9000 \
-                      -Dsonar.python.version=3.9 \
-                      -Dsonar.token=${env.SONAR_TOKEN}
+                    -Dsonar.projectKey=projeto-devops \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.python.version=3.9
                     """
                 }
             }
@@ -98,8 +94,11 @@ pipeline {
     }
 
     post {
+        success {
+            chuckNorris()
+        }
         failure {
-            echo "Build falhou. Mas Chuck Norris nunca falha."
+            echo 'Build falhou. Mas Chuck Norris nunca falha.'
         }
     }
 }
