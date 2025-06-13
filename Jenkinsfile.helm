@@ -25,7 +25,7 @@ pipeline {
         stage('Push da imagem Docker') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', DOCKERHUB_CREDENTIALS) {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
                         sh "docker push ${IMAGE_NAME}:${env.BUILD_ID}"
                         sh "docker tag ${IMAGE_NAME}:${env.BUILD_ID} ${IMAGE_NAME}:latest"
                         sh "docker push ${IMAGE_NAME}:latest"
