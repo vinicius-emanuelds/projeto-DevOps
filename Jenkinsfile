@@ -96,7 +96,7 @@ pipeline {
         }
     }
 
-    ost {
+    post {
         success {
             script {
                 def chuck = chuckNorris()
