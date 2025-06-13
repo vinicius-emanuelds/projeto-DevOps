@@ -79,28 +79,18 @@ A base de qualquer projeto de automação é um ambiente local funcional e bem c
 2. **Validação Local da API**: Para garantir que a aplicação funcionava, executei os seguintes passos:
 
    ```bash
-   # Navegar para a pasta do backend
    cd backend
 
-   # Criar um ambiente virtual. Esta é uma prática essencial em Python para isolar
-   # as dependências de cada projeto.
    python -m venv venv
 
-   # Ativar o ambiente virtual
    source venv/bin/activate
 
-   # Instalar as bibliotecas Python necessárias para a API
    pip install -r requirements.txt
 
-   # Iniciar o servidor de desenvolvimento.
-   # Uvicorn é um servidor ASGI (Asynchronous Server Gateway Interface),
-   # necessário para rodar frameworks assíncronos como o FastAPI.
-   # A flag --reload é indispensável para desenvolvimento, pois reinicia
-   # o servidor automaticamente sempre que um arquivo .py é alterado.
    uvicorn main:app --reload
    ```
 
-   Com a API rodando e acessível em `http://127.0.0.1:8000/docs`, chegou a hora de  prosseguir.
+   Com a API rodando e acessível em `http:/localhost:8000/docs`, vamos prosseguir.
 
 
 [⬆️ Voltar ao menu](#navegação)
@@ -114,7 +104,7 @@ A base de qualquer projeto de automação é um ambiente local funcional e bem c
 
 O objetivo aqui era empacotar a aplicação em uma imagem Docker, tornando-a portátil e isolada.
 
-### O Dockerfile: A Receita do Bolo
+### Dockerfile
 
 O `Dockerfile` é um script que contém as instruções para montar a imagem da nossa aplicação, camada por camada.
 
@@ -135,7 +125,7 @@ COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### O `.dockerignore`
+### `.dockerignore`
 
 Para evitar que arquivos desnecessários (como ambientes virtuais, cache do Python ou o próprio diretório `.git`) fossem copiados para a imagem, criei um arquivo `.dockerignore`. Isso mantém a imagem final limpa, pequena e acelera o processo de build.
 
@@ -152,10 +142,8 @@ __pycache__/
 Com os arquivos prontos, executei os seguintes comandos:
 
 ```bash
-# 1. Construir a imagem. A tag '-t' formata como 'usuario/nome-da-imagem:versao'
 docker build -t viniciusemanuelds/projeto-devops:latest .
 
-# 2. Publicar a imagem no Docker Hub para que o Kubernetes possa encontrá-la.
 docker push viniciusemanuelds/projeto-devops:latest
 ```
 
@@ -184,10 +172,8 @@ O fluxo de uma requisição até a aplicação dentro do Kubernetes funciona ass
 Para aplicar esses manifestos:
 
 ```bash
-# É uma boa prática criar um 'namespace' para isolar os recursos de diferentes projetos.
 kubectl create namespace devops
 
-# O comando 'apply -f' lê os arquivos YAML e instrui o Kubernetes a criar/atualizar os recursos.
 kubectl apply -f ./k8s/projeto-devops.yaml -n devops
 ```
 
@@ -271,9 +257,9 @@ pipeline {
 
 ```
 
-* **Referência em Vídeo:** Para a construção e deploy dessa pipeline, esse vídeo foi indispensável para clarear o passo a passo: [O que é Jenkins | Guia prático para começar com Jenkins](https://www.youtube.com/watch?v=mvtVL5eivzo&t).
-
 ![alt text](src/public/images/PROJETO_DEVOPS_JKS.png)
+
+* **Referência em Vídeo:** Para a construção e deploy dessa pipeline, esse vídeo foi indispensável para clarear o passo a passo: [O que é Jenkins | Guia prático para começar com Jenkins](https://www.youtube.com/watch?v=mvtVL5eivzo&t).
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -318,9 +304,10 @@ stage('Análise com SonarQube') {
 }
 ```
 
+![alt text](src/public/images/SONAR.png)
+
 **Problemas Resolvidos:** A integração teve seus desafios, como erros de conexão (`host.docker.internal` não funciona bem no WSL2, usei `localhost`) e a necessidade de configurar o `sonar-scanner` manualmente no agente Jenkins.
 
-![alt text](src/public/images/SONAR.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -372,9 +359,10 @@ Esta automação garante que apenas imagens consideradas seguras cheguem ao noss
 
 ```
 
+![alt text](src/public/images/TRIVY.png)
+
 > **Decisão Arquitetural Importante:** Ao escanear, o Trivy encontrou uma vulnerabilidade crítica (`CVE-2023-45853`) no pacote `zlib1g` da imagem base. No entanto, a equipe do Debian marcou-a como `will_not_fix` (não será corrigida). Em um cenário real, isso exigiria uma análise de risco. Para este projeto, decidi aceitar o risco, pois o impacto era mínimo, e usei a flag `--ignore-unfixed` para que o Trivy só bloqueasse a pipeline por falhas que tivessem uma correção disponível.
 
-![alt text](src/public/images/TRIVY.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
@@ -392,7 +380,7 @@ O desafio: meu Jenkins é local, o GitHub não consegue alcançá-lo. A soluçã
 1. **Criei um Canal**: Acessei [smee.io](https://smee.io) e criei um novo canal, que me deu uma URL pública única.
 2. **Configurei o Webhook no GitHub**: Apontei o webhook do meu repositório para essa URL do Smee.
 3. **Rodei o Cliente Local**: No meu terminal, rodei o comando:
-   `npx smee -u https://smee.io/SEU_CANAL_AQUI -t http://localhost:8080/github-webhook/`
+   `npx smee -u https://smee.io/SEU_CANAL_AQUI -t http://localhost:8081/github-webhook/`
    Este cliente ouve o canal público do Smee e retransmite os eventos para o meu Jenkins local.
 
 **Parte B: Notificações no Discord com Ngrok**
@@ -481,13 +469,14 @@ stage('Deploy com Helm') {
 }
 ```
 
+![alt text](src/public/images/DEVOPS_HELM_JKS.png)
+
+![alt text](src/public/images/SONAR_DEVOPS_HELM.png)
+
 **Aprendizados com Helm**: O diagnóstico de templates com `helm template --debug` foi essencial. Enfrentei e resolvi erros comuns, como a imutabilidade do `selector` em um Deployment e a necessidade de gerenciar os releases do Helm de forma separada dos deploys manuais com `kubectl`.
 
 * **Referência em Vídeo:** Para entender a estrutura de um Chart e os comandos do Helm, este vídeo foi um ótimo ponto de partida: [Guia Helm: Como simplificar o deploy no Kubernetes](https://www.youtube.com/watch?v=VTQpe-ZRgsk&t).
 
-![alt text](src/public/images/DEVOPS_HELM_JKS.png)
-
-![alt text](src/public/images/SONAR_DEVOPS_HELM.png)
 
 [⬆️ Voltar ao menu](#navegação)
 
