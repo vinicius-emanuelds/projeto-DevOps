@@ -88,34 +88,28 @@ pipeline {
         success {
             script {
                 def chuck = chuckNorris()
-                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
-                def mensagem = """{
-                    \"content\": \"🚀 Deploy com Helm realizado com sucesso!\"
-                }"""
-
-                sh """
-                curl -H \"Content-Type: application/json\" \
-                    -X POST \
-                    -d '${mensagem}' \
-                    ${discordWebhook}
-                """
+                withCredentials([string(credentialsId: 'discord', variable: 'DISCORD_WEBHOOK')]) {
+                    sh """
+                        curl -H "Content-Type: application/json" \
+                            -X POST \
+                            -d '{"content": "🚀 Deploy realizado com sucesso!"}' \
+                            ${DISCORD_WEBHOOK}
+                    """
+                }
             }
         }
 
         failure {
             script {
                 def chuck = chuckNorris()
-                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
-                def mensagem = """{
-                    \"content\": \"⚠️ O deploy com Helm falhou!\"
-                }"""
-
-                sh """
-                curl -H \"Content-Type: application/json\" \
-                    -X POST \
-                    -d '${mensagem}' \
-                    ${discordWebhook}
-                """
+                withCredentials([string(credentialsId: 'discord', variable: 'DISCORD_WEBHOOK')]) {
+                    sh """
+                        curl -H "Content-Type: application/json" \
+                            -X POST \
+                            -d '{"content": "⚠️ A pipeline falhou!"}' \
+                            ${DISCORD_WEBHOOK}
+                    """
+                }
             }
         }
     }

@@ -87,7 +87,7 @@ pipeline {
         }
     }
 
- post {
+    post {
         success {
             script {
                 def chuck = chuckNorris()
