@@ -10,21 +10,22 @@ Minha intenção aqui foi ir além de um simples "como fazer". Este é um guia d
   - [Visão Geral e Arquitetura](#visão-geral-e-arquitetura)
   - [Fase 1: Preparação do Ambiente de Desenvolvimento](#fase-1-preparação-do-ambiente-de-desenvolvimento)
   - [Fase 2: Containerização com Docker](#fase-2-containerização-com-docker)
-    - [O Dockerfile: A Receita do Bolo](#o-dockerfile-a-receita-do-bolo)
-    - [O `.dockerignore`](#o-dockerignore)
+    - [Dockerfile](#dockerfile)
+    - [`.dockerignore`](#dockerignore)
     - [Construindo e Publicando a Imagem](#construindo-e-publicando-a-imagem)
   - [Fase 3: Deploy Manual no Kubernetes](#fase-3-deploy-manual-no-kubernetes)
     - [A Arquitetura do Deploy](#a-arquitetura-do-deploy)
-  - [Fase 4 e 5: Automação CI/CD com Jenkins](#fase-4-e-5-automação-cicd-com-jenkins)
-    - [O Jenkinsfile: O Coração da Automação](#o-jenkinsfile-o-coração-da-automação)
+  - [Fase 4: Automação CI/CD com Jenkins](#fase-4-automação-cicd-com-jenkins)
+    - [Jenkinsfile](#jenkinsfile)
       - [Configuração do Jenkins](#configuração-do-jenkins)
-    - [O Jenkinsfile Detalhado](#o-jenkinsfile-detalhado)
+    - [Jenkinsfile Detalhado](#jenkinsfile-detalhado)
 - [Desafios Extras: Construindo uma Pipeline de Nível Profissional](#desafios-extras-construindo-uma-pipeline-de-nível-profissional)
   - [DevSecOps 1: Análise Estática de Código (SAST) com SonarQube](#devsecops-1-análise-estática-de-código-sast-com-sonarqube)
   - [DevSecOps 2: Análise de Vulnerabilidades com Trivy](#devsecops-2-análise-de-vulnerabilidades-com-trivy)
   - [Automação do Fluxo: Webhooks para GitHub (com Smee.io) e Notificações no Discord](#automação-do-fluxo-webhooks-para-github-com-smeeio-e-notificações-no-discord)
   - [Gerenciamento Avançado com Helm](#gerenciamento-avançado-com-helm)
-  - [Conclusão e Principais Aprendizados](#conclusão-e-principais-aprendizados)
+- [NOTA: Pipelines disponíveis neste repositório](#nota-pipelines-disponíveis-neste-repositório)
+- [Conclusão e Principais Aprendizados](#conclusão-e-principais-aprendizados)
 
 <br>
 
@@ -192,11 +193,11 @@ O resultado foi a aplicação rodando e acessível externamente, servida pelo Ku
 ---
 
 
-## Fase 4 e 5: Automação CI/CD com Jenkins
+## Fase 4: Automação CI/CD com Jenkins
 
 Esta é a fase central do projeto: unir tudo em uma pipeline automatizada.
 
-### O Jenkinsfile
+### Jenkinsfile
 
 O `Jenkinsfile` é um arquivo de texto que define a pipeline usando uma sintaxe Groovy. Ele vive junto com o código-fonte, tratando a pipeline como código (*Pipeline as Code*).
 
@@ -208,7 +209,7 @@ A preparação do Jenkins envolveu:
 2. **Plugins**: Instalei os plugins essenciais: `Docker Pipeline`, `Kubernetes CLI Plugin`, `Git Plugin`, `SonarQube Scanner` e `Discord Notifier`.
 3. **Credenciais**: Cadastrei de forma segura as credenciais do GitHub (Chave SSH), Docker Hub (Usuário/Senha), SonarQube (Token) e Kubeconfig.
 
-### O Jenkinsfile Detalhado
+### Jenkinsfile Detalhado
 
 ```groovy
 //Jenkisfile
