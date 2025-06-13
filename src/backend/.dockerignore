@@ -1,7 +1,5 @@
-.git
-
-*.md
-
 __pycache__/
-
 *.pyc
+.git
+.venv
+*.md

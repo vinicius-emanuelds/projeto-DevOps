@@ -1,229 +1,228 @@
+# ♾️Projeto DevOps: Guia Definitivo de uma Pipeline CI/CD Completa
 
-# 🚀 Projeto DevOps - FastAPI com Jenkins, Docker e Kubernetes
+Este repositório é a documentação da minha jornada construindo uma esteira de Integração e Entrega Contínua (CI/CD) do zero, um projeto que realizei no programa **Scholarship da CompassUOL**.
 
-Este projeto demonstra a construção de uma esteira CI/CD usando uma API em FastAPI, conteinerização com Docker, e orquestração via Kubernetes, com Jenkins como ferramenta central de automação.
+Minha intenção aqui foi ir além de um simples "como fazer". Este é um guia detalhado que explora não apenas o "o quê", mas o "porquê" de cada ferramenta, cada comando e cada decisão de arquitetura. O objetivo de uma pipeline CI/CD é criar uma ponte automatizada, segura e eficiente entre o código e o usuário final, e cada linha deste projeto foi pensada para entender e dominar esse fluxo.
+
+## Navegação
+- [♾️Projeto DevOps: Guia Definitivo de uma Pipeline CI/CD Completa](#️projeto-devops-guia-definitivo-de-uma-pipeline-cicd-completa)
+  - [Navegação](#navegação)
+  - [Visão Geral e Arquitetura](#visão-geral-e-arquitetura)
+  - [Fase 1: Preparação do Ambiente de Desenvolvimento](#fase-1-preparação-do-ambiente-de-desenvolvimento)
+  - [Fase 2: Containerização Profissional com Docker](#fase-2-containerização-profissional-com-docker)
+    - [O Dockerfile Otimizado](#o-dockerfile-otimizado)
+    - [O `.dockerignore`](#o-dockerignore)
+  - [Fase 3: Deploy no Kubernetes: A Forma Manual](#fase-3-deploy-no-kubernetes-a-forma-manual)
+    - [A Arquitetura do Deploy](#a-arquitetura-do-deploy)
+  - [Fase 4 e 5: Automação com Jenkins e Pipeline as Code](#fase-4-e-5-automação-com-jenkins-e-pipeline-as-code)
+    - [Configuração do Jenkins](#configuração-do-jenkins)
+    - [O Jenkinsfile Detalhado](#o-jenkinsfile-detalhado)
+- [Desafios Extras: Construindo uma Pipeline de Nível Profissional](#desafios-extras-construindo-uma-pipeline-de-nível-profissional)
+  - [DevSecOps 1: Análise Estática de Código (SAST) com SonarQube](#devsecops-1-análise-estática-de-código-sast-com-sonarqube)
+  - [DevSecOps 2: Análise de Vulnerabilidades com Trivy](#devsecops-2-análise-de-vulnerabilidades-com-trivy)
+  - [Automação do Fluxo: Webhooks para GitHub (com Smee.io) e Notificações no Discord](#automação-do-fluxo-webhooks-para-github-com-smeeio-e-notificações-no-discord)
+  - [Infraestrutura como Código Avançada: Deploy com Helm](#infraestrutura-como-código-avançada-deploy-com-helm)
+  - [Conclusão e Principais Aprendizados](#conclusão-e-principais-aprendizados)
+
+<br>
 
 ---
 
-## 🧱 Estrutura do Projeto
+## Visão Geral e Arquitetura
 
+O fluxo de trabalho automatizado (pipeline) que construí segue os seguintes passos:
+
+1. O código de uma API em **FastAPI** é enviado (`push`) para o **GitHub**.
+2. Um webhook do **Smee.io** notifica meu **Jenkins** local sobre a alteração.
+3. O **Jenkins** inicia a pipeline, que primeiro analisa o código com **SonarQube**.
+4. Em seguida, a pipeline constrói uma imagem **Docker** da aplicação.
+5. A imagem é escaneada em busca de vulnerabilidades pelo **Trivy**.
+6. Se segura, a imagem é enviada para o **Docker Hub**.
+7. O **Helm** é acionado para fazer o deploy da nova versão no cluster **Kubernetes**.
+8. Ao final, uma notificação de sucesso ou falha é enviada para um canal no **Discord**.
+
+```mermaid
+flowchart
+
+A[ALtero o repositório local com o código API] --> B[Envio, via push, para o GitHub]
+B --> C[Webhook com Smee.io notifica o Jenkins do novo commit]
+C --> D[O Jenkins inicia a pipeline, analisando o código com SonarQube]
+D --> K[O relatório do SonarQube é exibido no Console Output]
+K --> E
+D --> E[Sucesso! A pipeline constrói a imagem Docker da aplicação]
+E --> G[A imagem é escaneada pelo Trivy]
+G --> L[Encontradas vulnerabilidades CRÍTICAS com correção disponível]
+L --> F[Falha! O deploy é interrompido e o log é exibido no Console Output]
+G --> H[Sem vulnerabilidades! A imagem é enviada para o Docker Hub]
+
+H --> I[O Helm é acionado para fazer o deploy da nova versão no cluster Kubernetes]
+I --> J[Através do NGrok, uma notificação de Sucesso ou Falha é disparada para o Discord]
+F --> J
 ```
-.
-├── backend
-│   ├── Dockerfile
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── .dockerignore
-│   └── ...
-└── ...
-````
+
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
 
 ---
 
-## ✅ Fase 1 - Preparação
 
-- ✅ Código da API clonado e testado localmente
-- ✅ Repositório GitHub privado criado
-- ✅ Execução local via `uvicorn` validada:
+## Fase 1: Preparação do Ambiente de Desenvolvimento
 
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-````
+A base de qualquer projeto de automação é um ambiente local funcional e bem configurado.
 
-* 🔗 Acesso em: [http://localhost:8000/docs](http://localhost:8000/docs)
+1. **Código e Versionamento**: O código da API foi versionado com Git e hospedado no GitHub, essencial para a CI.
+2. **Validação Local da API**: Para garantir que a aplicação funcionava antes de qualquer outra coisa, executei os seguintes passos:
+
+   ```bash
+   # Navegar para a pasta do backend
+   cd backend
+
+   # Criar um ambiente virtual. Esta é uma prática essencial em Python para isolar
+   # as dependências de cada projeto.
+   python -m venv venv
+
+   # Ativar o ambiente virtual
+   source venv/bin/activate
+
+   # Instalar as bibliotecas Python necessárias para a API
+   pip install -r requirements.txt
+
+   # Iniciar o servidor de desenvolvimento.
+   # Uvicorn é um servidor ASGI (Asynchronous Server Gateway Interface),
+   # necessário para rodar frameworks assíncronos como o FastAPI.
+   # A flag --reload é indispensável para desenvolvimento, pois reinicia
+   # o servidor automaticamente sempre que um arquivo .py é alterado.
+   uvicorn main:app --reload
+   ```
+
+   Com a API rodando e acessível em `http://127.0.0.1:8000/docs`, chegou a hora de  prosseguir.
+
+
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
 
 ---
 
-## 🐳 Fase 2 - Conteinerização com Docker
 
-### 📄 Dockerfile
+## Fase 2: Containerização Profissional com Docker
 
-O Dockerfile está localizado em `/backend` e define a build da API com base no Python 3.9:
+Containerizar não é apenas rodar um `docker build`. É sobre criar imagens otimizadas, seguras e pequenas.
 
-```Dockerfile
+### O Dockerfile Otimizado
+
+Criei um `Dockerfile` pensando em performance e no cache de camadas do Docker.
+
+```dockerfile
+# /backend/Dockerfile
+
+# Etapa 1: Imagem Base
+# Utilizei a imagem 'python:3.9-slim' por ser uma versão enxuta,
+# o que diminui a superfície de ataque e o tamanho final da imagem.
 FROM python:3.9-slim
+
+# Etapa 2: Diretório de Trabalho
+# Define o diretório de trabalho padrão. Isso é uma boa prática para
+# não poluir o diretório raiz do container.
 WORKDIR /app
+
+# Etapa 3: Instalação de Dependências com otimização de cache
+# Copio inicialmente apenas o requirements.txt para aproveitar o cache do Docker.
+# Alterações no código-fonte não afetam esta camada, otimizando futuros builds.
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+
+# Atualizo o sistema e instalo as dependências Python.
+RUN apt-get update && apt-get upgrade -y && apt-get clean && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Etapa 4: Cópia do Código
+# Agora copio o resto do código. Qualquer alteração aqui invalidará
+# apenas o cache desta camada e das subsequentes.
 COPY . .
+
+# Etapa 5: Comando de Execução
+# Expõe a aplicação na porta 8000 e no host 0.0.0.0,
+# que é essencial para que a aplicação seja acessível de fora do container.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### 📂 .dockerignore
+### O `.dockerignore`
+
+Para evitar que arquivos desnecessários (como ambientes virtuais, cache do Python ou o próprio diretório `.git`) fossem copiados para a imagem, criei um arquivo `.dockerignore`.
 
 ```dockerignore
 __pycache__/
 *.pyc
 .git
+.venv
 *.md
 ```
 
-### 🧪 Teste local do container
+Com tudo pronto, construí e publiquei a imagem no Docker Hub.
 
-```bash
-cd backend
-docker build -t meu-backend:latest .
-docker run -d -p 8000:8000 meu-backend:latest
-```
 
-Acesso: [http://localhost:8000/docs](http://localhost:8000/docs)
+[⬆️ Voltar ao menu](#navegação)
 
-### ☁️ Push no Docker Hub
-
-```bash
-docker tag meu-backend:latest seuusuario/fastapi-app:latest
-docker push seuusuario/fastapi-app:latest
-```
-
-🔗 Docker Hub: [https://hub.docker.com/r/seuusuario/projeto-devops](https://hub.docker.com/r/seuusuario/projeto-devops)
+<br>
 
 ---
 
-## 🚀 Fase 3 – Deploy manual no Kubernetes
 
-Nesta fase, a aplicação FastAPI foi implantada em um cluster Kubernetes local (Rancher Desktop), utilizando recursos `Deployment`, `Service` e `Ingress`.
+## Fase 3: Deploy no Kubernetes: A Forma Manual
 
----
+Antes de automatizar com o Jenkins, fiz o deploy manualmente para entender profundamente os recursos do Kubernetes.
 
-### 📁 Estrutura de Arquivos YAML
+### A Arquitetura do Deploy
 
-Os manifests estão organizados em `./k8s/`:
+O fluxo de uma requisição até a aplicação dentro do Kubernetes funciona assim:
 
-- `projeto-devops.yaml`: contém o `Deployment` e o `Service`
-- `ingress.yaml`: expõe a aplicação via domínio interno com Traefik
+`Usuário Externo → Ingress → Service → Pod (Container)`
 
----
+* **Deployment**: É a receita que diz ao Kubernetes como rodar minha aplicação: qual imagem usar (`viniciusemanuelds/projeto-devops`) e quantas réplicas (`replicas: 2`) manter sempre em execução. A seção `selector.matchLabels` é crucial, pois ela conecta o Deployment aos Pods que ele deve gerenciar.
+* **Service**: Cria um ponto de acesso interno e estável (um DNS interno) para os Pods. Os IPs dos Pods mudam. O Service provê um endereço fixo. Usei o tipo `ClusterIP`, que o torna acessível apenas de dentro do cluster.
+* **Ingress**: É o porteiro do cluster. Ele expõe rotas HTTP/HTTPS para os Services. Optei pelo Ingress em vez do `NodePort` porque ele é muito mais poderoso: permite roteamento baseado em domínio (`projeto.localhost`), centraliza o gerenciamento de SSL e se integra a controladores de tráfego avançados como o Traefik (padrão no Rancher Desktop).
 
-### 🔧 Recursos Criados
+Apliquei os manifestos no cluster com `kubectl apply -f <projeto-devops.yaml> -n devops`, e a aplicação ficou disponível.
 
-#### 📦 Deployment
 
-- Nome: `projeto-devops`
-- Replicas: `2`
-- Imagem: `viniciusemanuelds/projeto-devops:latest`
-- Porta container: `8000`
-- Labels: `app: fastapi`, `name: projeto-devops`
-- Namespace: `devops`
+[⬆️ Voltar ao menu](#navegação)
 
-#### 🌐 Service
-
-- Tipo: `ClusterIP`
-- Porta: `80 → 8000`
-- Seleciona o app `fastapi`
-
-#### 🌍 Ingress (Traefik)
-
-- Host: `projeto.localhost`
-- Path: `/ → service/projeto-devops`
-- Tipo: `Ingress`
-- Controlador: Traefik (padrão no Rancher Desktop)
+<br>
 
 ---
 
-### 🛠 Comandos Utilizados
 
-```bash
-# Criar namespace
-kubectl create namespace devops
+## Fase 4 e 5: Automação com Jenkins e Pipeline as Code
 
-# Aplicar deployment e service
-kubectl apply -f ./k8s/projeto-devops.yaml -n devops
+Aqui, o trabalho manual acaba e a automação começa. O objetivo é tratar a pipeline como código (`Pipeline as Code`), versionando-a junto com a aplicação no `Jenkinsfile`.
 
-# Aplicar Ingress
-kubectl apply -f ./k8s/ingress.yaml -n devops
+### Configuração do Jenkins
 
-# Verificar recursos
-kubectl get all -n devops
-kubectl get ingress -n devops
+A preparação do Jenkins envolveu:
 
+1. **Instalação e Agentes**: Instalei o Jenkins e configurei um agente no WSL2 para ter um ambiente Linux limpo e com acesso nativo ao Docker.
+2. **Plugins**: Instalei os plugins essenciais: `Docker Pipeline`, `Kubernetes CLI Plugin`, `Git Plugin`, `SonarQube Scanner` e `Discord Notifier`.
+3. **Credenciais**: Cadastrei de forma segura as credenciais do GitHub (Chave SSH), Docker Hub (Usuário/Senha), SonarQube (Token) e Kubeconfig.
 
-✅ Verificação do funcionamento
-A aplicação pode ser acessada via navegador:
-
-🔗 http://projeto.localhost/docs
-
-O Swagger da API FastAPI é carregado com sucesso, confirmando o roteamento via Traefik.
-
-🧠 Observações Técnicas
-O uso de Ingress permite simular uma arquitetura real com DNS e proxy reverso
-
-A tag da imagem deve ser definida diretamente (latest, v1, etc.) — não suportado {{tag}}
-
-As labels de Deployment.selector.matchLabels e Pod.metadata.labels precisam coincidir
-
-Evitou-se o uso de NodePort para manter boa prática de exposição via Ingress Controller
-
-Perfeito. Aqui está a documentação completa e profissional da **Fase 4 – Jenkins: Build + Push + Deploy**, incluindo um **guia básico de instalação e configuração do Jenkins** com foco prático e reprodutível.
-
----
-
-````markdown
-## 🔧 Fase 4 – Jenkins CI/CD (Build + Push + Deploy)
-
-Nesta fase, foi implementada uma pipeline completa de CI/CD usando **Jenkins**, que automatiza o build da imagem Docker, faz o push para o Docker Hub e aplica o deploy no cluster Kubernetes local via `kubectl`.
-
----
-
-### 📦 Estrutura geral da esteira
-
-- **Pipeline Declarativa** (`Jenkinsfile`) com 3 stages:
-  1. **Build** da imagem Docker com `docker.build`
-  2. **Push** para Docker Hub (`latest` e `${BUILD_ID}`)
-  3. **Deploy** automático no cluster Kubernetes (`kubectl apply`)
-- Substituição dinâmica da tag da imagem no manifesto YAML (`{{tag}}`)
-- Deploy realizado em namespace isolado: `devops`
-
----
-
-## 🧭 Etapas de Instalação e Configuração do Jenkins
-
-### 1. Instalação (Windows com WSL + Rancher Desktop)
-
-- Instale o Jenkins localmente (via `.war` ou MSI)
-- Crie um agente Jenkins conectado ao WSL com label `WSL_Ubuntu`
-- Dê permissão para que o agente use Docker local
-- Instale os plugins essenciais:
-  - **Docker Pipeline**
-  - **Kubernetes CLI Plugin**
-  - **Git Plugin**
-  - (opcional) **ChuckNorris Plugin**
-
----
-
-### 2. Configuração necessária
-
-- **Docker Hub Credentials**:
-  - Tipo: `Username with Password`
-  - ID: `dockerhub`
-
-- **GitHub Credentials**:
-  - Tipo: `SSH Username with Private Key`
-  - ID: `git`
-
-- **Kubeconfig Credentials**:
-  - Tipo: `Kubeconfig File`
-  - ID: `kubeconfig`
-
-- **Agente com Docker configurado** (dentro do WSL)
-- Label: `WSL_Ubuntu`
-
----
-
-## 🧱 Jenkinsfile
+### O Jenkinsfile Detalhado
 
 ```groovy
+//Jenkisfile
 pipeline {
-    agent { label 'WSL_Ubuntu' }
+    agent {
+        label 'WSL_Ubuntu'
+    }
+
+    tools {
+        git 'linux-git'
+    }
 
     stages {
         stage('Build do Backend') {
             steps {
                 script {
-                    dockerapp = docker.build("viniciusemanuelds/projeto-devops:${env.BUILD_ID}", '-f ./src/backend/Dockerfile ./src/backend')
+                    dockerapp = docker.build("viniciusemanuelds/projeto-devops:${env.BUILD_ID}",'-f ./src/backend/Dockerfile ./src/backend')
                 }
             }
         }
@@ -251,448 +250,227 @@ pipeline {
             }
         }
     }
-
-    post {
-        failure {
-            echo 'Build falhou. Mas Chuck Norris nunca falha.'
-        }
-    }
 }
-````
 
----
-
-### 📄 Estrutura do manifesto Kubernetes (`projeto-devops.yaml`)
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: projeto-devops
-  namespace: devops
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: fastapi
-  template:
-    metadata:
-      labels:
-        app: fastapi
-    spec:
-      containers:
-      - name: projeto-devops
-        image: viniciusemanuelds/projeto-devops:{{tag}}
-        ports:
-        - containerPort: 8000
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: projeto-devops
-  namespace: devops
-spec:
-  selector:
-    app: fastapi
-  ports:
-  - port: 80
-    targetPort: 8000
-  type: ClusterIP
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: projeto-devops-ingress
-  namespace: devops
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
-spec:
-  rules:
-    - host: projeto.localhost
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: projeto-devops
-                port:
-                  number: 80
 ```
 
----
+* **Referência em Vídeo:** Para a construção e deploy dessa pipeline, esse vídeo foi indispensável para clarear o passo a passo: [O que é Jenkins | Guia prático para começar com Jenkins](https://www.youtube.com/watch?v=mvtVL5eivzo&t).
 
-## ✅ Resultado final
 
-Após cada `git push` ou build manual:
+[⬆️ Voltar ao menu](#navegação)
 
-* A imagem da API é reconstruída e publicada no Docker Hub
-* A tag `latest` e o número do build (`:5`, `:6`, etc.) são atribuídos
-* O cluster Kubernetes aplica o novo deploy com a imagem atualizada
-* A aplicação está acessível via:
-
-🔗 [http://projeto.localhost/docs](http://projeto.localhost/docs)
+<br>
 
 ---
 
-## 🔐 Desafio Extra: Scan de Vulnerabilidades com Trivy
 
-### 🎯 Objetivo
+# Desafios Extras: Construindo uma Pipeline de Nível Profissional
 
-Integrar o **Trivy** à pipeline Jenkins para escanear automaticamente as imagens Docker geradas e **bloquear o deploy caso existam vulnerabilidades CRÍTICAS corrigíveis**.
+Com a base sólida, adicionei etapas avançadas para simular um ambiente DevSecOps real.
 
----
+<br>
 
-### ⚙️ Etapas da Implementação
+## DevSecOps 1: Análise Estática de Código (SAST) com SonarQube
 
-1. **Instalação do Trivy**
-   O Trivy foi utilizado via container, sem instalação local, usando o seguinte comando base:
+O SonarQube olha para o *meu* código. Ele faz uma Análise Estática de Segurança da Aplicação (SAST) para encontrar bugs, "code smells" (más práticas) e vulnerabilidades como injeção de SQL ou senhas hard-coded.
 
-   ```bash
-   docker run --rm \
-     -v /var/run/docker.sock:/var/run/docker.sock \
-     aquasec/trivy image nome-da-imagem
-   ```
+**Implementação:**
 
-2. **Inclusão na pipeline Jenkins**
-   Um novo `stage` foi adicionado no `Jenkinsfile`, antes do deploy, contendo:
+1. **SonarQube Server**: Subi o SonarQube via Docker: `docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community`.
+2. **Configuração no Jenkins**: Configurei a URL do servidor e o token de autenticação no Jenkins.
+3. **Estágio na Pipeline**: Adicionei um estágio para executar a análise antes de construir a imagem.
 
-   ```groovy
-   stage('Scan de Vulnerabilidades com Trivy') {
-       steps {
-           script {
-               def image = "viniciusemanuelds/projeto-devops:${env.BUILD_ID}"
-               echo "🔍 Escaneando a imagem ${image} com Trivy..."
-
-               def exitCode = sh(
-                   script: """#!/bin/bash
-                   docker run --rm \
-                   -v /var/run/docker.sock:/var/run/docker.sock \
-                   -v \$PWD:/root/.cache/ \
-                   aquasec/trivy \
-                   image ${image} \
-                   --severity CRITICAL \
-                   --ignore-unfixed \
-                   --exit-code 1 \
-                   --format table \
-                   --output trivy-report.txt
-                   """,
-                   returnStatus: true
-               )
-
-               if (exitCode != 0) {
-                   error "❌ Vulnerabilidades CRÍTICAS (com correção) encontradas na imagem Docker! Build bloqueado. Veja trivy-report.txt."
-               } else {
-                   echo "✅ Nenhuma vulnerabilidade crítica (corrigível) encontrada na imagem."
-               }
-           }
-       }
-   }
-   ```
-
-3. **Política de Segurança adotada**
-
-   * **Gravidade avaliada:** Apenas CVEs com severidade `CRITICAL`;
-   * **Critério de bloqueio:** Apenas se houver **patch disponível**;
-   * **Relatório gerado:** `trivy-report.txt`.
-
----
-
-### 🧠 Decisão Arquitetural
-
-> **Optamos por manter a imagem base `python:3.9-slim`, mesmo apresentando uma vulnerabilidade crítica (`CVE-2023-45853`) no pacote `zlib1g`.**
-> Esta decisão foi baseada em dois fatores:
->
-> 1. A vulnerabilidade está marcada como `will_not_fix` pela equipe mantenedora do pacote no Debian.
-> 2. O impacto no contexto do projeto é mínimo e sem exposição direta — portanto, aceitamos o risco controlado.
->
-> A opção `--ignore-unfixed` do Trivy garante que apenas vulnerabilidades com correção disponível interrompam o pipeline.
-
----
-
-Se quiser, posso gerar essa seção já formatada para o `README.md` também. Deseja isso?
-
-Ótimo. Aqui está a documentação da **Fase Extra: Webhook com GitHub e Ngrok**, no padrão das fases anteriores:
-
----
-
-## 🔁 Fase Extra: Integração com Webhook GitHub + Ngrok
-
-### Objetivo
-
-Automatizar a execução da pipeline Jenkins sempre que houver um push no repositório GitHub, mesmo com o Jenkins sendo executado localmente.
-
----
-
-### 🧰 Pré-Requisitos
-
-* Jenkins rodando localmente (porta `8081`)
-* Conta no [Ngrok](https://ngrok.com/)
-* Repositório GitHub já configurado com o Jenkinsfile
-
----
-
-### ⚙️ Etapas da Configuração
-
-#### 1. Instalar e autenticar o Ngrok (Windows)
-
-```bash
-winget install Ngrok.Ngrok
-ngrok config add-authtoken <SEU_TOKEN_NGROK>
-```
-
-#### 2. Expor Jenkins via Ngrok
-
-```bash
-ngrok http 8081
-```
-
-> Guarde o endereço gerado, ex: `https://8cd4-2804-xyz.ngrok.io`
-
----
-
-#### 3. Configurar Webhook no GitHub
-
-* Acesse seu repositório → ⚙️ Settings → Webhooks → **Add webhook**
-* **Payload URL:**
-  `https://<NGROK_URL>/github-webhook/`
-  Exemplo: `https://8cd4-2804-xyz.ngrok.io/github-webhook/`
-* **Content type:** `application/json`
-* **Secret:** (deixe vazio ou use um token simples)
-* **Just the push event** (marcado)
-* Clique em **Add webhook**
-
----
-
-#### 4. Configurar o Job no Jenkins
-
-* Em **Pipeline → Configure**
-* Vá até **Build Triggers**
-
-  * Marque: `GitHub hook trigger for GITScm polling`
-
----
-
-### 📦 Entregável
-
-* Push no GitHub aciona automaticamente o Jenkins, que realiza build, push da imagem e deploy no Kubernetes.
-
----
-
-> 💡 **Decisão técnica**
->
-> A exposição do Jenkins foi feita via **Ngrok**, evitando configurações complexas de rede ou servidores externos. Essa abordagem é suficiente para ambientes locais e testes de integração contínua.
-
----
-
-Pronto para o próximo desafio extra?
-Aqui está a documentação da **Fase Extra: Webhook GitHub → Jenkins com Ngrok e alternativa via Smee.io**:
-
----
-
-## 📦 Fase Extra: Webhook GitHub → Jenkins
-
-### 🎯 Objetivo
-
-Permitir que **um push no GitHub** dispare **automaticamente uma pipeline Jenkins** hospedada localmente.
-
----
-
-## 🔧 Opção 1: Ngrok (Tunelamento de Porta)
-
-### ✅ Pré-requisitos
-
-* Jenkins rodando localmente (ex: `http://localhost:8081`)
-* Conta no [Ngrok](https://ngrok.com/)
-* Autenticação configurada com:
-
-  ```bash
-  ngrok config add-authtoken SEU_TOKEN
-  ```
-
-### ▶️ Passos
-
-1. **Iniciar o túnel:**
-
-   ```bash
-   ngrok http 8081
-   ```
-
-   Isso vai gerar uma URL pública como:
-
-   ```
-   https://a1b2c3d4.ngrok.io
-   ```
-
-2. **Configurar webhook no GitHub:**
-
-   * Vá até o repositório
-   * Acesse: `Settings` > `Webhooks` > `Add webhook`
-   * **Payload URL**: `https://a1b2c3d4.ngrok.io/github-webhook/`
-   * **Content type**: `application/json`
-   * **Events**: `Just the push event`
-
-3. **Configurar Jenkins:**
-
-   * No job da pipeline, vá em: `Configurar` > `Build Triggers`
-   * Marque: ✅ “GitHub hook trigger for GITScm polling”
-
-4. **Importante:**
-
-   * Toda vez que reiniciar o túnel com Ngrok, a URL **mudará** (no plano gratuito), quebrando o webhook até ser atualizado no GitHub.
-
----
-
-## 🪄 Opção 2: Smee.io (Recomendado para testes locais)
-
-### ✅ Vantagens
-
-* Recomendado pela **GitHub**
-* Não precisa abrir porta nem expor Jenkins
-* Funciona mesmo com IP dinâmico
-* Ótimo para dev local
-
-### ▶️ Passos
-
-1. **Criar canal no Smee.io:**
-
-   * Acesse: [https://smee.io](https://smee.io)
-   * Clique em "Start a new channel"
-   * Exemplo de URL gerada:
-
-     ```
-     https://smee.io/abc123def456
-     ```
-
-2. **Criar webhook no GitHub:**
-
-   * Payload URL: `https://smee.io/abc123def456`
-   * Content type: `application/json`
-   * Events: `Just the push event`
-
-3. **Rodar o relay localmente:**
-
-   ```bash
-   npx smee -u https://smee.io/abc123def456 -t http://localhost:8081/github-webhook/
-   ```
-
-4. **Configurar Jenkins:**
-
-   * Vá em: `Configurar job` > `Build Triggers`
-   * Marque: ✅ “GitHub hook trigger for GITScm polling”
-
----
-
-## 💡 Considerações
-
-> *“Ngrok é mais robusto e pronto para produção, mas com URLs voláteis no plano gratuito. Smee.io é mais prático para testes e desenvolvimento local, sem precisar expor portas da máquina.”*
-
----
-
-Se quiser, posso gerar um bloco `README.md` com esse conteúdo formatado para seu repositório. Deseja isso?
-
-Perfeito. Aqui está a documentação completa da **Fase Extra: Integração com SonarQube** para o seu projeto DevOps:
-
----
-
-## 📦 Fase Extra: Integração com SonarQube (SAST)
-
-### 🎯 Objetivo
-
-Realizar análise **estática de código (SAST)** utilizando o **SonarQube** em ambiente local via Docker, integrando com o Jenkins Pipeline e bloqueando builds em caso de falhas.
-
----
-
-## ⚙️ Configuração do Ambiente
-
-### ✅ Requisitos
-
-* Jenkins e SonarQube rodando no **mesmo host** (WSL ou Windows).
-* Docker instalado com suporte a containers.
-* Jenkins configurado com `sonar-scanner` disponível no agente.
-* Token de autenticação do SonarQube criado previamente.
-
----
-
-## ▶️ Passos para Instalação
-
-### 1. **Rodar SonarQube via Docker**
-
-```bash
-docker run -d --name sonarqube \
-  -p 9000:9000 \
-  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
-  sonarqube:lts
-```
-
-> Acesse em: `http://localhost:9000/`
-> Login padrão: `admin` / `admin` (mude na primeira vez)
-
----
-
-### 2. **Criar Token de Autenticação**
-
-* Acesse o SonarQube
-* Vá em: `My Account` → `Security`
-* Crie um **token novo**
-* Guarde o token para uso no Jenkins
-
----
-
-### 3. **Configurar Jenkins**
-
-* Vá em: `Gerenciar Jenkins` → `Configurar o Sistema`
-
-* Seção **SonarQube Servers**:
-
-  * Nome: `sonar-local`
-  * URL: `http://localhost:9000`
-  * Autenticação: **via token** (adicione em "Credenciais")
-
-* Vá em: `Global Tool Configuration`
-
-  * Configure o `SonarScanner` com nome: `sonar-scanner`
-
----
-
-## 🛠️ Jenkinsfile (Stage de Análise)
+<!-- end list -->
 
 ```groovy
 stage('Análise com SonarQube') {
-    tools {
-        sonarScanner 'sonar-scanner'
-    }
-    steps {
-        withSonarQubeEnv('sonar-local') {
-            sh '''
-            sonar-scanner \
-              -Dsonar.projectKey=projeto-devops \
-              -Dsonar.sources=. \
-              -Dsonar.python.version=3.9 \
-              -Dsonar.token=$SONAR_TOKEN
-            '''
+	steps {
+ 		withSonarQubeEnv('sonar-local') {
+			sh """
+			sonar-scanner \
+				-Dsonar.projectKey=projeto-devops \
+				-Dsonar.sources=. \
+				-Dsonar.host.url=http://localhost:9000 \
+				-Dsonar.token=${env.SONAR_TOKEN} \
+				-Dsonar.python.version=3.9 \
+				-Dsonar.exclusions=trivy/**
+			"""
+		}
+	}
+}
+```
+
+**Problemas Resolvidos:** A integração teve seus desafios, como erros de conexão (`host.docker.internal` não funciona bem no WSL2, usei `localhost`) e a necessidade de configurar o `sonar-scanner` manualmente no agente Jenkins.
+
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
+
+
+## DevSecOps 2: Análise de Vulnerabilidades com Trivy
+
+**Por quê?** Enquanto o SonarQube olha para o *meu* código, o Trivy olha para as dependências. Uma aplicação pode ser funcional, mas suas dependências podem conter falhas de segurança conhecidas (CVEs). Escanear a imagem Docker é um passo crítico de "shift-left security", ou seja, trazer a segurança para o início do processo.
+
+**Implementação:** Adicionei um estágio no Jenkins que roda o Trivy logo após o build da imagem.
+
+```groovy
+        stage('Scan de Vulnerabilidades com Trivy') {
+            steps {
+                script {
+                    def image = "viniciusemanuelds/projeto-devops:${env.BUILD_ID}"
+                    echo "Escaneando a imagem ${image}..."
+
+                    def exitCode = sh(
+                        script: """#!/bin/bash
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v \$PWD:/root/.cache/ \
+                        aquasec/trivy \
+                        image ${image} \
+                        --severity CRITICAL \
+                        --ignore-unfixed \
+                        --exit-code 1 \
+                        --format table \
+                        --output trivy-report.txt
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (exitCode != 0) {
+                        error "❌ Vulnerabilidades CRÍTICAS encontradas na imagem Docker! Build bloqueado."
+                    } else {
+                        echo "✅ Nenhuma vulnerabilidade crítica encontrada."
+                    }
+                }
+            }
+        }
+
+```
+
+> **Decisão Arquitetural Importante:** Ao escanear, o Trivy encontrou uma vulnerabilidade crítica (`CVE-2023-45853`) no pacote `zlib1g` da imagem base. No entanto, a equipe do Debian marcou-a como `will_not_fix` (não será corrigida). Em um cenário real, isso exigiria uma análise de risco. Para este projeto, decidi aceitar o risco, pois o impacto era mínimo, e usei a flag `--ignore-unfixed` para que o Trivy só bloqueasse a pipeline por falhas que tivessem uma correção disponível.
+
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
+
+
+## Automação do Fluxo: Webhooks para GitHub (com Smee.io) e Notificações no Discord
+
+**Por quê?** Uma pipeline só é verdadeiramente "contínua" se for disparada automaticamente. E para fechar o ciclo, ela deve notificar os interessados sobre seu resultado.
+
+**Parte A: Gatilho do GitHub com Smee.io**
+O desafio: meu Jenkins é local, o GitHub não consegue alcançá-lo. A solução: um cliente de túnel/relay. Usei o **Smee.io**, uma ferramenta recomendada pelo próprio GitHub para desenvolvimento local.
+
+1. **Criei um Canal**: Acessei [smee.io](https://smee.io) e criei um novo canal, que me deu uma URL pública única.
+2. **Configurei o Webhook no GitHub**: Apontei o webhook do meu repositório para essa URL do Smee.
+3. **Rodei o Cliente Local**: No meu terminal, rodei o comando:
+   `npx smee -u https://smee.io/SEU_CANAL_AQUI -t http://localhost:8080/github-webhook/`
+   Este cliente ouve o canal público do Smee e retransmite os eventos para o meu Jenkins local.
+
+**Parte B: Notificações no Discord com Ngrok**
+
+Para enviar notificações ao Discord diretamente do Jenkins, utilizei um webhook do Discord configurado com o serviço do  **Ngrok** , permitindo expor o Jenkins rodando localmente ao ambiente externo.
+
+1. **Webhook no Discord**
+   * No canal desejado, criei um webhook pela opção:
+     * `Configurações do canal → Integrações → Webhooks → Novo webhook`.
+   * Copiei a URL gerada pelo Discord.
+2. **Configuração do Ngrok**
+   * Iniciei o Ngrok para expor localmente o Jenkins na porta correta:
+     `ngrok http 8081`
+   * Copiei a URL pública fornecida pelo Ngrok.
+3. **Uso no Jenkins**
+   * Configurei a pipeline para enviar notificações POST para o webhook do Discord sempre que o pipeline finaliza com sucesso ou falha, utilizando a URL pública do Ngrok.
+
+```groovy
+    post {
+        success {
+            script {
+                def chuck = chuckNorris()
+                def discordWebhook = 'SUA_URL_DISCORD'
+                def mensagem = """{
+                    "content": "🚀 Deploy realizado com sucesso!"
+                }"""
+
+                sh """
+                curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d '${mensagem}' \
+                    ${discordWebhook}
+                """
+            }
+        }
+
+        failure {
+            script {
+                def chuck = chuckNorris()
+                def discordWebhook = 'SUA_URL_DISCORD'
+                def mensagem = """{
+                    "content": "⚠️ A pipeline falhou!"
+                }"""
+
+                sh """
+                curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d '${mensagem}' \
+                    ${discordWebhook}
+                """
+            }
         }
     }
 }
 ```
 
-> Adicione o token em `Credenciais Jenkins` e referencie com `withCredentials` ou variável de ambiente.
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
+
+
+
+## Infraestrutura como Código Avançada: Deploy com Helm
+
+**Por quê?** Gerenciar múltiplos arquivos YAML do Kubernetes é difícil e propenso a erros. O Helm é o gerenciador de pacotes do K8s, permitindo empacotar toda a aplicação em um "Chart" reutilizável e versionável.
+
+**Implementação:**
+
+1. **Criei um Helm Chart**: Estruturei meus manifestos em um diretório `helm-projeto/`, usando variáveis de template (ex: `{{ .Values.image.tag }}`) em vez de valores fixos.
+2. **Ajustei a Pipeline**: Criei um novo estágio que usa o comando `helm` em vez de `kubectl`.
+
+<!-- end list -->
+
+```groovy
+stage('Deploy com Helm') {
+	steps {
+		withKubeConfig([credentialsId: 'kubeconfig']) {
+			sh """
+			helm upgrade --install devops-helm ./helm-projeto \
+				--namespace devops \
+				--set image.repository=${IMAGE_NAME} \
+				--set image.tag=${env.BUILD_ID}
+			"""
+		}
+	}
+}
+```
+
+**Aprendizados com Helm**: O diagnóstico de templates com `helm template --debug` foi essencial. Enfrentei e resolvi erros comuns, como a imutabilidade do `selector` em um Deployment e a necessidade de gerenciar os releases do Helm de forma separada dos deploys manuais com `kubectl`.
+
+* **Referência em Vídeo:** Para entender a estrutura de um Chart e os comandos do Helm, este vídeo foi um ótimo ponto de partida: [Guia Helm: Como simplificar o deploy no Kubernetes](https://www.youtube.com/watch?v=VTQpe-ZRgsk&t).
+
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
 
 ---
 
-### ⚠️ Problemas Resolvidos
+## Conclusão e Principais Aprendizados
 
-* ❌ **host.docker.internal** não é reconhecido no WSL → foi substituído por `localhost`
-* ❌ Erro `AccessDeniedException` em arquivos grandes → ignorar diretórios como `trivy/db/` com `.sonarcloud.properties` ou `sonar.exclusions`
-* ❌ Falta do `sonar-scanner` → instalado manualmente no agente Jenkins
+Esta jornada foi muito além de simplesmente aprender ferramentas. Foi sobre internalizar os princípios da cultura DevOps e DevSecOps.
 
----
+* **Automação**: Cada hora gasta automatizando uma tarefa manual é recuperada dezenas de vezes, liberando tempo para focar em melhorias e inovação.
+* **Segurança**: Integrar Trivy e SonarQube desde o início me provou que segurança não é uma etapa final, mas uma responsabilidade contínua e integrada ao fluxo de desenvolvimento.
+* **Código**: Tratar a infraestrutura (`YAMLs`, `Helm Charts`) e a pipeline (`Jenkinsfile`) como código tornou o sistema transparente, versionável e muito mais fácil de manter e depurar.
 
-### 💬 Nota Técnica
+Este projeto solidificou minha base técnica e, mais importante, a mentalidade necessária para construir e manter sistemas de software modernos, resilientes e seguros.
 
-> “Para evitar falhas por arquivos grandes ou pastas não relevantes (como cache do Trivy), recomenda-se excluir essas pastas via `sonar.exclusions` no comando ou no painel do projeto.”
-
----
-
-Se quiser, posso gerar esse conteúdo direto em um arquivo `README.md` formatado para o seu repositório. Deseja isso agora?
-...
+[⬆️ Voltar ao menu](#navegação)

@@ -94,7 +94,7 @@ pipeline {
                 def chuck = chuckNorris()
                 def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
                 def mensagem = """{
-                    "content": "🚀 Deploy realizado com sucesso! Chuck diz: ${chuck}"
+                    "content": "🚀 Deploy realizado com sucesso!"
                 }"""
 
                 sh """
@@ -111,7 +111,7 @@ pipeline {
                 def chuck = chuckNorris()
                 def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
                 def mensagem = """{
-                    "content": "⚠️ A pipeline falhou! Chuck diz: ${chuck}"
+                    "content": "⚠️ A pipeline falhou!"
                 }"""
 
                 sh """
