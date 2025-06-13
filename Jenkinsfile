@@ -7,6 +7,10 @@ pipeline {
         git 'linux-git'
     }
 
+    environment {
+        DISCORD = credentials('discord')
+    }
+
     stages {
 
         stage('Análise com SonarQube') {
@@ -92,7 +96,7 @@ pipeline {
         success {
             script {
                 def chuck = chuckNorris()
-                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                def discordWebhook = ${DISCORD}
                 def mensagem = """{
                     "content": "🚀 Deploy realizado com sucesso!"
                 }"""
@@ -109,7 +113,7 @@ pipeline {
         failure {
             script {
                 def chuck = chuckNorris()
-                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                def discordWebhook = ${DISCORD}
                 def mensagem = """{
                     "content": "⚠️ A pipeline falhou!"
                 }"""

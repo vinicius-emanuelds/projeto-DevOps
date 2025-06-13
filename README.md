@@ -9,19 +9,21 @@ Minha intenção aqui foi ir além de um simples "como fazer". Este é um guia d
   - [Navegação](#navegação)
   - [Visão Geral e Arquitetura](#visão-geral-e-arquitetura)
   - [Fase 1: Preparação do Ambiente de Desenvolvimento](#fase-1-preparação-do-ambiente-de-desenvolvimento)
-  - [Fase 2: Containerização Profissional com Docker](#fase-2-containerização-profissional-com-docker)
-    - [O Dockerfile Otimizado](#o-dockerfile-otimizado)
+  - [Fase 2: Containerização com Docker](#fase-2-containerização-com-docker)
+    - [O Dockerfile: A Receita do Bolo](#o-dockerfile-a-receita-do-bolo)
     - [O `.dockerignore`](#o-dockerignore)
-  - [Fase 3: Deploy no Kubernetes: A Forma Manual](#fase-3-deploy-no-kubernetes-a-forma-manual)
+    - [Construindo e Publicando a Imagem](#construindo-e-publicando-a-imagem)
+  - [Fase 3: Deploy Manual no Kubernetes](#fase-3-deploy-manual-no-kubernetes)
     - [A Arquitetura do Deploy](#a-arquitetura-do-deploy)
-  - [Fase 4 e 5: Automação com Jenkins e Pipeline as Code](#fase-4-e-5-automação-com-jenkins-e-pipeline-as-code)
-    - [Configuração do Jenkins](#configuração-do-jenkins)
+  - [Fase 4 e 5: Automação CI/CD com Jenkins](#fase-4-e-5-automação-cicd-com-jenkins)
+    - [O Jenkinsfile: O Coração da Automação](#o-jenkinsfile-o-coração-da-automação)
+      - [Configuração do Jenkins](#configuração-do-jenkins)
     - [O Jenkinsfile Detalhado](#o-jenkinsfile-detalhado)
 - [Desafios Extras: Construindo uma Pipeline de Nível Profissional](#desafios-extras-construindo-uma-pipeline-de-nível-profissional)
   - [DevSecOps 1: Análise Estática de Código (SAST) com SonarQube](#devsecops-1-análise-estática-de-código-sast-com-sonarqube)
   - [DevSecOps 2: Análise de Vulnerabilidades com Trivy](#devsecops-2-análise-de-vulnerabilidades-com-trivy)
   - [Automação do Fluxo: Webhooks para GitHub (com Smee.io) e Notificações no Discord](#automação-do-fluxo-webhooks-para-github-com-smeeio-e-notificações-no-discord)
-  - [Infraestrutura como Código Avançada: Deploy com Helm](#infraestrutura-como-código-avançada-deploy-com-helm)
+  - [Gerenciamento Avançado com Helm](#gerenciamento-avançado-com-helm)
   - [Conclusão e Principais Aprendizados](#conclusão-e-principais-aprendizados)
 
 <br>
@@ -29,22 +31,24 @@ Minha intenção aqui foi ir além de um simples "como fazer". Este é um guia d
 ---
 
 ## Visão Geral e Arquitetura
+Este projeto automatiza o deploy de uma API. A seguir, detalho as ferramentas escolhidas e o porquê de cada uma.
+
+| Ferramenta                | Finalidade e Justificativa da Escolha                                                                                                                                                                                                                                    | Documentação Oficial                                 |
+| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------- |
+| **FastAPI**         | Framework Python para construir a API. Escolhi o FastAPI por sua alta performance, sintaxe moderna e, principalmente, pela geração automática de documentação interativa (Swagger UI), o que facilita muito os testes.                                              | [fastapi.tiangolo.com](https://fastapi.tiangolo.com/)     |
+| **Docker**          | Para criar, gerenciar e distribuir a aplicação em containers. O Docker foi essencial para empacotar a API e todas as suas dependências, garantindo que ela funcione da mesma forma em qualquer lugar.                                                                 | [docs.docker.com](https://docs.docker.com/)               |
+| **Docker Hub**      | Registro público para armazenar as imagens Docker. Optei pelo Docker Hub por ser a solução padrão do mercado, de fácil integração com o Jenkins e outras ferramentas.                                                                                             | [hub.docker.com](https://hub.docker.com/)                 |
+| **Kubernetes**      | Orquestrador de containers para gerenciar a aplicação em um ambiente robusto. O Kubernetes foi escolhido para simular um ambiente de produção real, gerenciando réplicas, disponibilidade e redes de forma automática.                                             | [kubernetes.io/docs](https://kubernetes.io/docs/home/)    |
+| **Rancher Desktop** | Para rodar um cluster Kubernetes localmente. Preferi o Rancher Desktop em vez de Minikube ou Kind por ele oferecer uma experiência mais completa "out-of-the-box", incluindo o Traefik como Ingress Controller padrão, o que simplificou a exposição da aplicação. | [docs.rancherdesktop.io](https://docs.rancherdesktop.io/) |
+| **Jenkins**         | Ferramenta de automação para orquestrar a pipeline de CI/CD. Escolhi o Jenkins por ser uma ferramenta extremamente poderosa, flexível e amplamente utilizada na indústria, o que a torna um conhecimento valioso.                                                    | [www.jenkins.io/doc/](https://www.jenkins.io/doc/)        |
+| **Helm**            | Gerenciador de pacotes para o Kubernetes. Adotei o Helm para evoluir a gestão dos manifestos, saindo de arquivos YAML estáticos para pacotes versionáveis e reutilizáveis (Charts).                                                                                  | [helm.sh/docs](https://helm.sh/docs/)                     |
 
 O fluxo de trabalho automatizado (pipeline) que construí segue os seguintes passos:
-
-1. O código de uma API em **FastAPI** é enviado (`push`) para o **GitHub**.
-2. Um webhook do **Smee.io** notifica meu **Jenkins** local sobre a alteração.
-3. O **Jenkins** inicia a pipeline, que primeiro analisa o código com **SonarQube**.
-4. Em seguida, a pipeline constrói uma imagem **Docker** da aplicação.
-5. A imagem é escaneada em busca de vulnerabilidades pelo **Trivy**.
-6. Se segura, a imagem é enviada para o **Docker Hub**.
-7. O **Helm** é acionado para fazer o deploy da nova versão no cluster **Kubernetes**.
-8. Ao final, uma notificação de sucesso ou falha é enviada para um canal no **Discord**.
 
 ```mermaid
 flowchart
 
-A[ALtero o repositório local com o código API] --> B[Envio, via push, para o GitHub]
+A[Altero o repositório local com o código API] --> B[Envio, via push, para o GitHub]
 B --> C[Webhook com Smee.io notifica o Jenkins do novo commit]
 C --> D[O Jenkins inicia a pipeline, analisando o código com SonarQube]
 D --> K[O relatório do SonarQube é exibido no Console Output]
@@ -71,8 +75,8 @@ F --> J
 
 A base de qualquer projeto de automação é um ambiente local funcional e bem configurado.
 
-1. **Código e Versionamento**: O código da API foi versionado com Git e hospedado no GitHub, essencial para a CI.
-2. **Validação Local da API**: Para garantir que a aplicação funcionava antes de qualquer outra coisa, executei os seguintes passos:
+1. **Código e Versionamento**: riei um repositório no GitHub. O Git é o pilar de qualquer projeto de software moderno, e ter um repositório central é o ponto de partida para a colaboração e automação.
+2. **Validação Local da API**: Para garantir que a aplicação funcionava, executei os seguintes passos:
 
    ```bash
    # Navegar para a pasta do backend
@@ -106,13 +110,13 @@ A base de qualquer projeto de automação é um ambiente local funcional e bem c
 ---
 
 
-## Fase 2: Containerização Profissional com Docker
+## Fase 2: Containerização com Docker
 
-Containerizar não é apenas rodar um `docker build`. É sobre criar imagens otimizadas, seguras e pequenas.
+O objetivo aqui era empacotar a aplicação em uma imagem Docker, tornando-a portátil e isolada.
 
-### O Dockerfile Otimizado
+### O Dockerfile: A Receita do Bolo
 
-Criei um `Dockerfile` pensando em performance e no cache de camadas do Docker.
+O `Dockerfile` é um script que contém as instruções para montar a imagem da nossa aplicação, camada por camada.
 
 ```dockerfile
 # /backend/Dockerfile
@@ -149,7 +153,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ### O `.dockerignore`
 
-Para evitar que arquivos desnecessários (como ambientes virtuais, cache do Python ou o próprio diretório `.git`) fossem copiados para a imagem, criei um arquivo `.dockerignore`.
+Para evitar que arquivos desnecessários (como ambientes virtuais, cache do Python ou o próprio diretório `.git`) fossem copiados para a imagem, criei um arquivo `.dockerignore`. Isso mantém a imagem final limpa, pequena e acelera o processo de build.
 
 ```dockerignore
 __pycache__/
@@ -159,7 +163,17 @@ __pycache__/
 *.md
 ```
 
-Com tudo pronto, construí e publiquei a imagem no Docker Hub.
+### Construindo e Publicando a Imagem
+
+Com os arquivos prontos, executei os seguintes comandos:
+
+```bash
+# 1. Construir a imagem. A tag '-t' formata como 'usuario/nome-da-imagem:versao'
+docker build -t viniciusemanuelds/projeto-devops:latest .
+
+# 2. Publicar a imagem no Docker Hub para que o Kubernetes possa encontrá-la.
+docker push viniciusemanuelds/projeto-devops:latest
+```
 
 
 [⬆️ Voltar ao menu](#navegação)
@@ -169,9 +183,9 @@ Com tudo pronto, construí e publiquei a imagem no Docker Hub.
 ---
 
 
-## Fase 3: Deploy no Kubernetes: A Forma Manual
+## Fase 3: Deploy Manual no Kubernetes
 
-Antes de automatizar com o Jenkins, fiz o deploy manualmente para entender profundamente os recursos do Kubernetes.
+Com a imagem no Docker Hub, era hora de implantá-la no cluster Kubernetes. Fazer isso manualmente foi fundamental para entender os objetos principais do K8s.
 
 ### A Arquitetura do Deploy
 
@@ -183,7 +197,17 @@ O fluxo de uma requisição até a aplicação dentro do Kubernetes funciona ass
 * **Service**: Cria um ponto de acesso interno e estável (um DNS interno) para os Pods. Os IPs dos Pods mudam. O Service provê um endereço fixo. Usei o tipo `ClusterIP`, que o torna acessível apenas de dentro do cluster.
 * **Ingress**: É o porteiro do cluster. Ele expõe rotas HTTP/HTTPS para os Services. Optei pelo Ingress em vez do `NodePort` porque ele é muito mais poderoso: permite roteamento baseado em domínio (`projeto.localhost`), centraliza o gerenciamento de SSL e se integra a controladores de tráfego avançados como o Traefik (padrão no Rancher Desktop).
 
-Apliquei os manifestos no cluster com `kubectl apply -f <projeto-devops.yaml> -n devops`, e a aplicação ficou disponível.
+Para aplicar esses manifestos:
+
+```bash
+# É uma boa prática criar um 'namespace' para isolar os recursos de diferentes projetos.
+kubectl create namespace devops
+
+# O comando 'apply -f' lê os arquivos YAML e instrui o Kubernetes a criar/atualizar os recursos.
+kubectl apply -f ./k8s/projeto-devops.yaml -n devops
+```
+
+O resultado foi a aplicação rodando e acessível externamente, servida pelo Kubernetes.
 
 
 [⬆️ Voltar ao menu](#navegação)
@@ -193,11 +217,15 @@ Apliquei os manifestos no cluster com `kubectl apply -f <projeto-devops.yaml> -n
 ---
 
 
-## Fase 4 e 5: Automação com Jenkins e Pipeline as Code
+## Fase 4 e 5: Automação CI/CD com Jenkins
 
-Aqui, o trabalho manual acaba e a automação começa. O objetivo é tratar a pipeline como código (`Pipeline as Code`), versionando-a junto com a aplicação no `Jenkinsfile`.
+Esta é a fase central do projeto: unir tudo em uma pipeline automatizada.
 
-### Configuração do Jenkins
+### O Jenkinsfile: O Coração da Automação
+
+O `Jenkinsfile` é um arquivo de texto que define a pipeline usando uma sintaxe Groovy. Ele vive junto com o código-fonte, tratando a pipeline como código (*Pipeline as Code*).
+
+#### Configuração do Jenkins
 
 A preparação do Jenkins envolveu:
 
@@ -266,13 +294,14 @@ pipeline {
 
 # Desafios Extras: Construindo uma Pipeline de Nível Profissional
 
-Com a base sólida, adicionei etapas avançadas para simular um ambiente DevSecOps real.
+Com a pipeline básica funcionando, busquei adicionar camadas de segurança, qualidade e gerenciamento avançado para simular um ambiente DevSecOps real.
 
 <br>
 
 ## DevSecOps 1: Análise Estática de Código (SAST) com SonarQube
 
-O SonarQube olha para o *meu* código. Ele faz uma Análise Estática de Segurança da Aplicação (SAST) para encontrar bugs, "code smells" (más práticas) e vulnerabilidades como injeção de SQL ou senhas hard-coded.
+O SonarQube olha para o *meu* código. A Análise Estática de Segurança de Aplicação (SAST) verifica o código-fonte em busca de falhas de segurança, bugs e "code smells" (más práticas).
+Integrei o SonarQube adicionando um estágio que executa o `sonar-scanner`. A cada execução, ele envia um relatório para o painel do SonarQube, permitindo que eu acompanhe a evolução da qualidade do código ao longo do tempo.
 
 **Implementação:**
 
@@ -311,7 +340,12 @@ stage('Análise com SonarQube') {
 
 **Por quê?** Enquanto o SonarQube olha para o *meu* código, o Trivy olha para as dependências. Uma aplicação pode ser funcional, mas suas dependências podem conter falhas de segurança conhecidas (CVEs). Escanear a imagem Docker é um passo crítico de "shift-left security", ou seja, trazer a segurança para o início do processo.
 
-**Implementação:** Adicionei um estágio no Jenkins que roda o Trivy logo após o build da imagem.
+**Implementação:** Adicionei um estágio no Jenkins que roda o Trivy logo após o build da imagem, configurado com flags importantes:
+* `--severity CRITICAL`: Foca apenas nos problemas mais graves.
+* `--ignore-unfixed`: Ignora vulnerabilidades que ainda não têm correção disponível. Isso é crucial para não bloquear a pipeline por problemas que não podemos resolver.
+* `--exit-code 1`: Faz o Trivy retornar um código de erro se encontrar algo, o que permite ao Jenkins identificar a falha e parar a pipeline.
+
+Esta automação garante que apenas imagens consideradas seguras cheguem ao nosso cluster.
 
 ```groovy
         stage('Scan de Vulnerabilidades com Trivy') {
@@ -427,7 +461,7 @@ Para enviar notificações ao Discord diretamente do Jenkins, utilizei um webhoo
 
 
 
-## Infraestrutura como Código Avançada: Deploy com Helm
+## Gerenciamento Avançado com Helm
 
 **Por quê?** Gerenciar múltiplos arquivos YAML do Kubernetes é difícil e propenso a erros. O Helm é o gerenciador de pacotes do K8s, permitindo empacotar toda a aplicação em um "Chart" reutilizável e versionável.
 
@@ -463,13 +497,33 @@ stage('Deploy com Helm') {
 
 ---
 
+## NOTA: Pipelines disponíveis neste repositório
+Para fins de estudo e comparação, este repositório mantém intencionalmente duas pipelines de deploy distintas e funcionais:
+
+- Pipeline com kubectl (`Jenkinsfile`)
+    - Arquivo: Jenkinsfile
+    - Método: Utiliza kubectl apply para implantar os manifestos YAML puros diretamente no cluster.
+    - Representa uma abordagem fundamental e direta de deploy no Kubernetes.
+
+- Pipeline com Helm (`Jenkinsfile.helm`)
+    - Arquivo: Jenkinsfile.helm
+    - Método: Utiliza helm upgrade --install para gerenciar o deploy através de um Helm Chart customizado.
+    - Esta é uma abordagem mais avançada, que abstrai a complexidade dos manifestos e promove a reutilização e o versionamento da infraestrutura.
+
+Ambas as pipelines podem ser configuradas no Jenkins e executadas de forma independente. Isso permite uma análise prática das vantagens e desvantagens de cada método de entrega de aplicações no Kubernete
+
+[⬆️ Voltar ao menu](#navegação)
+
+<br>
+
+---
 ## Conclusão e Principais Aprendizados
 
-Esta jornada foi muito além de simplesmente aprender ferramentas. Foi sobre internalizar os princípios da cultura DevOps e DevSecOps.
+Este projeto foi uma imersão no ecossistema DevOps. O maior aprendizado foi, sem dúvida, entender como as ferramentas se conectam para formar um fluxo de valor coeso e automatizado e, além disso, foi sobre internalizar os princípios da cultura DevOps e DevSecOps.
 
 * **Automação**: Cada hora gasta automatizando uma tarefa manual é recuperada dezenas de vezes, liberando tempo para focar em melhorias e inovação.
 * **Segurança**: Integrar Trivy e SonarQube desde o início me provou que segurança não é uma etapa final, mas uma responsabilidade contínua e integrada ao fluxo de desenvolvimento.
-* **Código**: Tratar a infraestrutura (`YAMLs`, `Helm Charts`) e a pipeline (`Jenkinsfile`) como código tornou o sistema transparente, versionável e muito mais fácil de manter e depurar.
+* **Infraestrutura como código (IaC)**: Definir a aplicação, a imagem Docker, a pipeline Jenkins e a infraestrutura Kubernetes, tudo em código, tornou o processo repetível, transparente e menos propenso a erros.
 
 Este projeto solidificou minha base técnica e, mais importante, a mentalidade necessária para construir e manter sistemas de software modernos, resilientes e seguros.
 
