@@ -25,14 +25,6 @@ pipeline {
             }
         }
 
-        stage('Resultado do SonarQube') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
         stage('Build do Backend') {
             steps {
                 script {

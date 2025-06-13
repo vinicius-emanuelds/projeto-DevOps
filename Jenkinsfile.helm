@@ -12,34 +12,24 @@ pipeline {
             }
         }
 
+        stage('Análise com SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar-local') {
+                    sh """
+                    sonar-scanner \
+                    -Dsonar.projectKey=devops-helm \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.python.version=3.9
+                    """
+                }
+            }
+        }
+
         stage('Build Backend') {
             steps {
                 script {
                     dockerapp = docker.build("${IMAGE_NAME}:${env.BUILD_ID}", "./src/backend")
-                }
-            }
-        }
-
-        stage('Push da imagem') {
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
-                        dockerapp.push("${env.BUILD_ID}")
-                        dockerapp.push("latest")
-                    }
-                }
-            }
-        }
-
-        stage('Deploy com Helm') {
-            steps {
-                withKubeConfig([credentialsId: 'kubeconfig']) {
-                    sh """
-                    helm upgrade --install devops-helm ./helm-projeto \
-                    --namespace devops \
-                    --set image.repository=${IMAGE_NAME} \
-                    --set image.tag=${env.BUILD_ID}
-                    """
                 }
             }
         }
@@ -68,25 +58,26 @@ pipeline {
             }
         }
 
-        stage('Notificar no Discord') {
+
+        stage('Push da imagem') {
             steps {
-                sh """
-                curl -H 'Content-Type: application/json' -X POST -d '{
-                  "content": "🚀 Deploy realizado com Helm no ambiente Kubernetes (versão ${env.BUILD_ID})"
-                }' https://discord.com/api/webhooks/SEU_WEBHOOK_AQUI
-                """
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
+                        dockerapp.push("${env.BUILD_ID}")
+                        dockerapp.push("latest")
+                    }
+                }
             }
         }
 
-        stage('Análise com SonarQube') {
+        stage('Deploy com Helm') {
             steps {
-                withSonarQubeEnv('sonar-local') {
+                withKubeConfig([credentialsId: 'kubeconfig']) {
                     sh """
-                    sonar-scanner \
-                    -Dsonar.projectKey=devops-helm \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.python.version=3.9
+                    helm upgrade --install devops-helm ./helm-projeto \
+                    --namespace devops \
+                    --set image.repository=${IMAGE_NAME} \
+                    --set image.tag=${env.BUILD_ID}
                     """
                 }
             }
@@ -95,10 +86,37 @@ pipeline {
 
     post {
         success {
-            chuckNorris()
+            script {
+                def chuck = chuckNorris()
+                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                def mensagem = """{
+                    \"content\": \"🚀 Deploy com Helm realizado com sucesso! Chuck diz: ${chuck}\"
+                }"""
+
+                sh """
+                curl -H \"Content-Type: application/json\" \
+                    -X POST \
+                    -d '${mensagem}' \
+                    ${discordWebhook}
+                """
+            }
         }
+
         failure {
-            echo 'Build falhou. Mas Chuck Norris nunca falha.'
+            script {
+                def chuck = chuckNorris()
+                def discordWebhook = 'https://discord.com/api/webhooks/1382685385150304287/xfkmxUVMYbJHxSS0mCgeVorMr3rGpVt1t9aDeenptTxcRiIN1GtMYVq2_LcAGcM0msNB'
+                def mensagem = """{
+                    \"content\": \"⚠️ O deploy com Helm falhou! Chuck diz: ${chuck}\"
+                }"""
+
+                sh """
+                curl -H \"Content-Type: application/json\" \
+                    -X POST \
+                    -d '${mensagem}' \
+                    ${discordWebhook}
+                """
+            }
         }
     }
 }
