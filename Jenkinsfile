@@ -7,12 +7,7 @@ pipeline {
         git 'linux-git'
     }
 
-    environment {
-        DISCORD = credentials('discord')
-    }
-
     stages {
-
         stage('Análise com SonarQube') {
             steps {
                 withSonarQubeEnv('sonar-local') {
@@ -92,38 +87,32 @@ pipeline {
         }
     }
 
-    post {
+ post {
         success {
             script {
                 def chuck = chuckNorris()
-                def discordWebhook = ${DISCORD}
-                def mensagem = """{
-                    "content": "🚀 Deploy realizado com sucesso!"
-                }"""
-
-                sh """
-                curl -H "Content-Type: application/json" \
-                    -X POST \
-                    -d '${mensagem}' \
-                    ${discordWebhook}
-                """
+                withCredentials([string(credentialsId: 'discord', variable: 'DISCORD_WEBHOOK')]) {
+                    sh """
+                        curl -H "Content-Type: application/json" \
+                            -X POST \
+                            -d '{"content": "🚀 Deploy realizado com sucesso!"}' \
+                            ${DISCORD_WEBHOOK}
+                    """
+                }
             }
         }
 
         failure {
             script {
                 def chuck = chuckNorris()
-                def discordWebhook = ${DISCORD}
-                def mensagem = """{
-                    "content": "⚠️ A pipeline falhou!"
-                }"""
-
-                sh """
-                curl -H "Content-Type: application/json" \
-                    -X POST \
-                    -d '${mensagem}' \
-                    ${discordWebhook}
-                """
+                withCredentials([string(credentialsId: 'discord', variable: 'DISCORD_WEBHOOK')]) {
+                    sh """
+                        curl -H "Content-Type: application/json" \
+                            -X POST \
+                            -d '{"content": "⚠️ A pipeline falhou!"}' \
+                            ${DISCORD_WEBHOOK}
+                    """
+                }
             }
         }
     }
