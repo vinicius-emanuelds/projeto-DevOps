@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "projeto-devops.fullname" . }}
+  name: {{ include "devops-helm.fullname" . }}
   labels:
     app: {{ .Chart.Name }}
   annotations:

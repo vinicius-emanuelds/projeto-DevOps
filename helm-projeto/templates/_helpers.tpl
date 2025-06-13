@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "projeto-devops.name" -}}
+{{- define "devops-helm.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "projeto-devops.fullname" -}}
+{{- define "devops-helm.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "projeto-devops.chart" -}}
+{{- define "devops-helm.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "projeto-devops.labels" -}}
-helm.sh/chart: {{ include "projeto-devops.chart" . }}
-{{ include "projeto-devops.selectorLabels" . }}
+{{- define "devops-helm.labels" -}}
+helm.sh/chart: {{ include "devops-helm.chart" . }}
+{{ include "devops-helm.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "projeto-devops.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "projeto-devops.name" . }}
+{{- define "devops-helm.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "devops-helm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "projeto-devops.serviceAccountName" -}}
+{{- define "devops-helm.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "projeto-devops.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "devops-helm.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

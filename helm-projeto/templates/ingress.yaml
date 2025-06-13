@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "projeto-devops.fullname" . }}-ingress
+  name: {{ include "devops-helm.fullname" . }}-ingress
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
@@ -14,7 +14,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "projeto-devops.fullname" . }}
+                name: {{ include "devops-helm.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
 {{- end }}
