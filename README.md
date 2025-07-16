@@ -1,6 +1,6 @@
 # ♾️Projeto DevOps: Guia Definitivo de uma Pipeline CI/CD Completa
 
-Este repositório é a documentação da minha jornada construindo uma esteira de Integração e Entrega Contínua (CI/CD) do zero, um projeto que realizei no programa **Scholarship da CompassUOL**.
+Este repositório é a documentação da minha jornada construindo uma esteira de Integração e Entrega Contínua (CI/CD) do zero.
 
 Minha intenção aqui foi ir além de um simples "como fazer". Este é um guia detalhado que explora não apenas o "o quê", mas o "porquê" de cada ferramenta, cada comando e cada decisão de arquitetura. O objetivo de uma pipeline CI/CD é criar uma ponte automatizada, segura e eficiente entre o código e o usuário final, e cada linha deste projeto foi pensada para entender e dominar esse fluxo.
 
